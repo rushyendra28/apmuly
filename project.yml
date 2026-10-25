@@ -1,0 +1,56 @@
+# XcodeGen spec: run `make project` (or `xcodegen generate`) to create Apmuly.xcodeproj.
+name: Apmuly
+options:
+  bundleIdPrefix: io.github.rushyendra28
+  deploymentTarget:
+    macOS: "26.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MACOSX_DEPLOYMENT_TARGET: "26.0"
+packages:
+  ApmulyCore:
+    path: Packages/ApmulyCore
+targets:
+  Apmuly:
+    type: application
+    platform: macOS
+    # Signing, version and bundle ID live here (with an optional git-ignored Local.xcconfig).
+    configFiles:
+      Debug: Config/Base.xcconfig
+      Release: Config/Base.xcconfig
+    sources:
+      - App/Sources
+      - App/Resources/Assets.xcassets
+      # Bundled as a folder (keeps the js/vendor/fonts layout the page expects).
+      - path: App/Resources/Renderer
+        type: folder
+        buildPhase: resources
+    dependencies:
+      - package: ApmulyCore
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: Apmuly
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSApplicationCategoryType: public.app-category.music
+        NSHumanReadableCopyright: © 2026 rushyendra28. MIT License.
+        NSAppleEventsUsageDescription: Apmuly reads what's playing in Music so it can show lyrics in sync.
+        NSAudioCaptureUsageDescription: Apmuly listens to Music's output so the visuals move to the beat and the lyrics can line up with the singer. Nothing is recorded, saved or sent anywhere.
+        NSSpeechRecognitionUsageDescription: Apmuly listens to the song on your Mac to line the lyrics up with the singer. Audio never leaves your Mac.
+    entitlements:
+      path: App/Apmuly.entitlements
+      properties:
+        # Not sandboxed (needs to talk to Music and tap its audio). The hardened runtime still
+        # requires this entitlement to send Apple Events.
+        com.apple.security.automation.apple-events: true
+schemes:
+  Apmuly:
+    build:
+      targets:
+        Apmuly: all
+    test:
+      targets:
+        - package: ApmulyCore/ApmulyCoreTests

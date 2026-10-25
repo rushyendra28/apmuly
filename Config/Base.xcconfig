@@ -1,0 +1,24 @@
+// Build settings shared by every configuration of the Apmuly app target.
+//
+// Signing defaults to ad-hoc ("-"), which builds and runs on any Mac with no Apple Developer
+// account. To use a stable identity (so macOS privacy permissions survive rebuilds) or your
+// Developer ID, copy Local.xcconfig.example to Local.xcconfig — it is git-ignored.
+
+PRODUCT_BUNDLE_IDENTIFIER = io.github.rushyendra28.apmuly
+MARKETING_VERSION = 1.0.0
+CURRENT_PROJECT_VERSION = 1
+
+CODE_SIGN_STYLE = Manual
+CODE_SIGN_IDENTITY = -
+DEVELOPMENT_TEAM =
+ENABLE_HARDENED_RUNTIME = YES
+// Ad-hoc and self-signed identities can't use secure timestamps.
+OTHER_CODE_SIGN_FLAGS = --timestamp=none
+// Identities without a Team ID fail hardened-runtime library validation for Xcode's separate
+// debug dylib, so Debug builds are linked as a single binary.
+ENABLE_DEBUG_DYLIB = NO
+
+SWIFT_STRICT_CONCURRENCY = complete
+ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon
+
+#include? "Local.xcconfig"

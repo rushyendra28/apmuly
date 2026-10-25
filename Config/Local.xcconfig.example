@@ -1,0 +1,14 @@
+// Personal overrides for Config/Base.xcconfig. Copy this file to Config/Local.xcconfig
+// (git-ignored) and uncomment what you need, then run `make project`.
+
+// A stable self-signed identity, so macOS doesn't ask for permissions again after every rebuild.
+// Create it once with: scripts/create-signing-identity.sh
+// CODE_SIGN_IDENTITY = Apmuly Local Signing
+
+// Your Apple Developer ID (for releases you notarize; see README → Making a release).
+// CODE_SIGN_IDENTITY = Developer ID Application
+// DEVELOPMENT_TEAM = ABCDE12345
+// OTHER_CODE_SIGN_FLAGS = --timestamp
+
+// Your own bundle identifier if you publish a fork.
+// PRODUCT_BUNDLE_IDENTIFIER = io.github.yourname.apmuly

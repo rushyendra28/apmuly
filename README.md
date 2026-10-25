@@ -5,22 +5,25 @@
 <h1 align="center">Apmuly</h1>
 
 <p align="center">
-  <b>See the song you're playing in Apple Music.</b><br>
-  Lyrics fly through 3D space in time with the singer, with emoji for the mood and the things it mentions —
-  and songs without lyrics become an audio visualizer.
+  <b>See the song you're playing in Apple Music — on Mac and Windows.</b><br>
+  Every word lands the moment it's sung, in three themes coloured by the album art, with emoji for the mood and
+  the things it mentions — and songs without lyrics become an audio visualizer.
 </p>
 
 <p align="center">
   <a href="https://github.com/rushyendra28/apmuly/releases/latest">Download</a> ·
   <a href="#install">Install</a> ·
+  <a href="#windows">Windows</a> ·
   <a href="#using-apmuly">Use</a> ·
   <a href="#build-from-source">Build from source</a> ·
   <a href="#privacy">Privacy</a>
 </p>
 
-| Lyrics in Kinetic Depth | Visualizer (songs without lyrics) |
+| Kinetic Depth | Grunge |
 |---|---|
-| ![Chrome 3D lyrics flying through warp streaks, with emoji](docs/images/kinetic-depth.png) | ![A chrome spectrum ring and pulsing core](docs/images/visualizer.png) |
+| ![3D lyrics in the album's colours flying through warp streaks, with emoji and a printed frame](docs/images/kinetic-depth.jpg) | ![Black poster type spraying onto creased paper over grainy album-coloured paint](docs/images/grunge.jpg) |
+| **Paper Brush** | **Visualizer** (songs without lyrics) |
+| ![Bold words on painted colour with a hand-drawn brush underline and die-cut emoji stickers](docs/images/paper-brush.jpg) | ![A spectrum ring of rounded bars around an iridescent pearl](docs/images/visualizer.jpg) |
 
 <sub>Screenshots use the built-in demo with placeholder words.</sub>
 
@@ -31,15 +34,31 @@
 - **Works with the Music app** — open Apmuly and play anything in Apple Music: streaming, your library, playlists.
 - **Lyrics in sync** — time-synced lyrics from [LRCLIB](https://lrclib.net), tracked to the millisecond, through
   pauses, seeks, skips and **AutoMix / crossfade** transitions.
-- **Words at the singer's pace** — Apmuly listens to the vocals (on-device) and moves each word to when it's actually
-  sung, carries that to repeated choruses, and remembers it for the next time you play the song.
-- **Kinetic Depth** — chrome words fly out of warp-speed streaks and land exactly as they're sung; the word
-  being sung pushes toward you; finished lines rocket past the camera. Everything moves to the beat.
+- **Every word on the singer's beat** — most lyric files only time whole lines, so Apmuly paces the words itself:
+  - **Live vocal onsets** — it watches the voice range of the music and starts each word the moment the singer
+    does, nudging the rest of the line if they're early or late. It calibrates itself to your speakers' delay and
+    stays hands-off when the mix is too busy to tell the voice apart (press **P** to compare with it off).
+  - **Learned timing** (macOS 14.2+) — on-device speech recognition pins words to when they were heard, carries
+    that to repeated choruses, and remembers it for the next play.
+  - **A good first guess** — before either kicks in, words are spaced the way they're usually sung: filler words
+    quick, the last word of a line held, a breath at commas.
+- **Three themes** (press **1** / **2** / **3**, or **T** to cycle):
+  - **Kinetic Depth** — satin 3D words fly out of warp-speed streaks and land as they're sung, laid out like a
+    poster; the sung word glows in the song's colour; finished lines rocket past the camera. Everything moves to the beat.
+  - **Grunge** — distressed poster typography: black grotesk words spray onto creased paper out of a grainy blur as
+    they're sung, over soft spray paint in the album's colour; every line gets a new layout; emoji are printed as
+    ink stamps.
+  - **Paper Brush** — hand-made kinetic type: bold words pop onto notebook paper, painted colour or a starry night as
+    they're sung, while brush doodles draw themselves around them (circles, underlines, arrows, sparkles); emoji
+    are die-cut stickers.
+- **A printed frame** — every theme shows the song and artist, a running timer and print marks around the edges.
+- **Album-art colours** — every theme takes its colours from the song's artwork and cross-fades between songs.
 - **Emoji that fit the song** — a mood emoji for each expressive line and emoji for the things it mentions
-  (🌙 🚗 💃 …), worked out privately on your Mac.
-- **Visualizer** — songs without lyrics (and instrumental breaks) become a chrome spectrum ring driven by the
-  music, with the song title in chrome.
-- **Lyrics mode** — press **L** for a clean, scrolling lyrics sheet with word-by-word highlighting.
+  (🌙 🚗 💃 …), worked out privately on your computer.
+- **Any window size** — words, emoji and the visualizer re-fit to wide, tall, small or full-screen windows.
+- **Visualizer** — songs without lyrics (and instrumental breaks) become a spectrum ring driven by the music, with
+  the song title; Grunge and Paper Brush show it their own way.
+- **Lyrics mode** — press **L** for the whole song as a scrolling sheet, filling word by word on the singer's timing.
 - **Auto-sync** — Apmuly listens to the singer (on-device speech recognition) to correct lyric files that are
   early or late, and compensates for Bluetooth headphone delay.
 
@@ -56,9 +75,9 @@ Everything works on macOS 12. A few extras need newer versions:
 
 | Feature | macOS |
 |---|---|
-| Synced lyrics, Kinetic Depth, Lyrics mode, emoji | 12+ |
-| Visuals that move to the music's beat, spectrum visualizer | 14.2+ (earlier versions pulse with the words instead) |
-| Auto-sync and words at the singer's pace | 14.2+ (needs audio capture and on-device speech recognition) |
+| Synced lyrics, all three themes, album-art colours, Lyrics mode, emoji | 12+ |
+| Visuals that move to the music's beat, spectrum visualizer, live vocal-onset pacing | 14.2+ (needs audio capture; earlier versions pulse with the words instead) |
+| Auto-sync and learned singer timing | 14.2+ (needs audio capture and on-device speech recognition) |
 | Emoji from Apple's on-device language model | 26+ with Apple Intelligence |
 
 ## Install
@@ -90,11 +109,23 @@ The first time you play a song, macOS asks for these:
 | Prompt | Why | Required? |
 |---|---|---|
 | **"Apmuly" wants access to control "Music"** | To read which song is playing and where you are in it | **Yes** — click **OK** |
-| **Capture audio from other apps** (macOS 14.2+) | So the visuals move to the beat, the visualizer has a spectrum, and auto-sync can hear the singer. Nothing is recorded or saved. | Recommended |
+| **Capture audio from other apps** (macOS 14.2+) | So the visuals move to the beat, words start when the singer does, the visualizer has a spectrum, and auto-sync can hear the singer. Nothing is recorded or saved. | Recommended |
 | **Speech recognition** (if asked) | Auto-sync and singer-paced words, on-device only | Optional |
 
 You can change these later in **System Settings → Privacy & Security** (Automation, Screen & System Audio
 Recording, Speech Recognition).
+
+## Windows
+
+Apmuly also runs on **Windows 10 (version 2004) or later and Windows 11**, with the same three themes and Lyrics
+mode. It follows **Apple Music for Windows** (or any player that shows up in Windows' media controls) and hears the
+music through audio loopback for the beat, spectrum and live word pacing.
+
+Download **`Apmuly-Windows-x.y.z-x64.zip`** (or `-arm64`) from the
+[latest release](https://github.com/rushyendra28/apmuly/releases/latest), unzip it anywhere and run
+**`Apmuly.exe`**. Windows SmartScreen may warn about an unrecognised app the first time — choose
+**More info → Run anyway**. See [`windows/README.md`](windows/README.md) for details, building from source and what
+differs from the Mac version.
 
 ## Using Apmuly
 
@@ -104,6 +135,9 @@ Recording, Speech Recognition).
 | Key | Action |
 |---|---|
 | **L** or **⌘L** | Switch between **Visualizer** (3D) and **Lyrics** (scrolling sheet) |
+| **1** / **2** / **3** (or **⌘1**–**⌘3**) | **Kinetic Depth** / **Grunge** / **Paper Brush** theme (remembered) |
+| **T** or **⌘T** | Next theme |
+| **P** | Turn live singer pacing off / on (to compare; remembered) |
 | **]** / **[** | Show lyrics later / earlier by 0.05 s (remembered per song) |
 | **0** | Reset that adjustment |
 | **R** | Retry if lyrics failed to load |
@@ -185,17 +219,24 @@ NOTARY_PROFILE=apmuly-notary make release
 Music.app ──Apple Events──▶ Music bridge ──▶ Playback tracker (AutoMix-aware clock)
                                                      │
 LRCLIB ──▶ Lyrics service (cache) ──▶ Lyric timeline ┤   (re-timed to the singer's pace)
-                                                     ├──▶ Lyrics mode (SwiftUI)
+                                                     │
 Music audio ──process tap──▶ beat · spectrum ────────┤
               └──▶ speech recognition ──▶ auto-sync ─┤
-Lyrics ──▶ on-device model ──▶ mood & emoji ─────────┴──▶ Kinetic Depth (three.js in WKWebView)
+Lyrics ──▶ on-device model ──▶ mood & emoji ─────────┤
+Artwork ──▶ palette ─────────────────────────────────┴──▶ Stage (three.js in WKWebView)
+                                                            ├─ vocal onsets ──▶ live word pacing
+                                                            ├─ Kinetic Depth · Grunge · Paper Brush
+                                                            └─ Lyrics mode sheet
 ```
+
+The Windows app hosts the same stage in WebView2 and feeds it from Windows' media controls and audio loopback.
 
 | Path | What |
 |---|---|
-| [`Packages/ApmulyCore`](Packages/ApmulyCore) | Pure Swift, fully tested: LRC parsing, LRCLIB client and cache, playback tracking, lyric↔singer matching and calibration, emoji/emotion planning |
+| [`Packages/ApmulyCore`](Packages/ApmulyCore) | Pure Swift, fully tested: LRC parsing, LRCLIB client and cache, playback tracking, lyric↔singer matching and calibration, emoji/emotion planning, album-art palettes |
 | [`App/Sources`](App/Sources) | The app: Music bridge, Core Audio tap, speech/emoji analysis, SwiftUI views, renderer bridge |
-| [`App/Resources/Renderer`](App/Resources/Renderer) | The 3D stage (three.js), served to a web view through a private `apmuly://` scheme |
+| [`App/Resources/Renderer`](App/Resources/Renderer) | The stage, shared by both apps: three themes (three.js), live singer pacing, the Lyrics-mode sheet |
+| [`windows/`](windows) | The Windows app (C# / .NET 10, WPF + WebView2) and its tested core library |
 | [`project.yml`](project.yml), [`Config/`](Config) | XcodeGen project spec and build settings |
 | [`scripts/`](scripts) | Release, icon, signing-identity and preview tools |
 
@@ -206,8 +247,8 @@ issues, tests or screenshots.
 
 ## Credits & license
 
-Apmuly is released under the [MIT License](LICENSE). It uses [three.js](https://threejs.org) and the MgOpen
-"helvetiker" typeface, and gets lyrics from [LRCLIB](https://lrclib.net) — see
+Apmuly is released under the [MIT License](LICENSE). It uses [three.js](https://threejs.org) and the
+[Inter](https://rsms.me/inter/) typeface (SIL OFL), and gets lyrics from [LRCLIB](https://lrclib.net) — see
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 Apmuly is an independent project and is not affiliated with, endorsed by, or sponsored by Apple Inc. Apple Music

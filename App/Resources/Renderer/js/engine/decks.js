@@ -29,6 +29,12 @@ export class Decks {
     this.snapshot = decks;
   }
 
+  /** Song position of a running deck at `now`, or null. */
+  positionOf(trackID, now) {
+    const deck = this.snapshot.find((d) => d.trackID === trackID);
+    return deck?.isRunning ? positionAt(this.anchors.get(trackID), now) : null;
+  }
+
   frame(now, dt) {
     const blend = 1 - Math.exp(-dt * OPACITY_RATE);
     const opacities = new Map();

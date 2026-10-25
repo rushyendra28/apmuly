@@ -4,6 +4,7 @@ import { layoutRows } from '../core/layout.js';
 import { stickerCues } from '../core/stickers.js';
 import { clamp01, smoothstep, easeInCubic, easeOutCubic, easeOutBack, damp, seeded } from '../core/easing.js';
 import { CAMERA_Z } from '../engine/stage.js';
+import { PaletteBlend } from '../engine/palette.js';
 
 /** Only show the "waiting" dots for breaks at least this long. */
 const MIN_GAP_VIEW = 2.5;
@@ -13,6 +14,8 @@ const DEFAULT_SMOOTHING = 10;
 const STICKER_POP = 0.45;
 const STICKER_EXIT = 0.35;
 const STICKER_MARGIN = 1.3;
+/** View width (world units) at which emoji are full size; a 16:10 window is about 21. */
+const STICKER_REFERENCE_WIDTH = 18;
 const CONFETTI_LIFE = 2.6;
 const CONFETTI_RISE = 5;
 
@@ -32,6 +35,8 @@ export class LineTheme {
   static textStyle = {};
   /** Max emissive for words; higher lets white text on dark scenes light up fully. */
   static glowLimit = 0.55;
+  /** Emissive at rest (keeps letter faces readable against dark scenes). */
+  static baseGlow = 0;
   /** Seconds before its cue a sticker starts animating, so its entrance can land on the word. */
   static stickerLead = 0;
 
@@ -43,6 +48,8 @@ export class LineTheme {
     this.root = new THREE.Group();
     this.tracks = new Map();
     this.ownedDisposables = [];
+    /** The song's colours (album artwork), eased on song changes. */
+    this.colors = new PaletteBlend();
   }
 
   // MARK: Lifecycle
@@ -65,13 +72,17 @@ export class LineTheme {
     this.stage.reset();
   }
 
-  setArtwork() {}
+  setPalette(palette, instant = false) {
+    this.colors.setTarget(palette, instant);
+  }
+
   build() {}
   updateScene() {}
 
   // MARK: Frame
 
   update(frame) {
+    this.colors.update(frame.dt);
     this.updateScene(frame);
     const seen = new Set(frame.decks.map((d) => d.trackID));
 
@@ -206,9 +217,9 @@ export class LineTheme {
 
   /** Creates a WordMesh per laid-out word in the theme's text colour and material. */
   addWords(view, laid) {
-    const { textColor, textStyle, glowLimit } = this.constructor;
+    const { textColor, textStyle, glowLimit, baseGlow } = this.constructor;
     view.items = laid.map((entry, i) => {
-      const mesh = this.factory.make(entry.text, textColor, textStyle, glowLimit);
+      const mesh = this.factory.make(entry.text, textColor, textStyle, glowLimit, baseGlow);
       mesh.object.scale.setScalar(entry.size);
       mesh.object.position.copy(entry.home);
       view.group.add(mesh.object);
@@ -311,9 +322,14 @@ export class LineTheme {
     sticker.object.position.y += easeOutCubic(k) * CONFETTI_RISE;
     sticker.object.position.x += Math.sin(age * 3 + sticker.slot) * 0.3;
     sticker.object.rotation.z = Math.sin(age * 2 + sticker.slot) * 0.5;
-    sticker.object.scale.setScalar(Math.max(0.001, 0.7 * easeOutBack(clamp01(age / 0.35), 2)));
+    sticker.object.scale.setScalar(Math.max(0.001, 0.7 * easeOutBack(clamp01(age / 0.35), 2)) * this.stickerScale());
     sticker.material.opacity = (1 - smoothstep(0.6, 1, k)) * deck.opacity;
     if (k >= 1) sticker.object.visible = false;
+  }
+
+  /** Emoji shrink in narrow windows so they never crowd the words. */
+  stickerScale() {
+    return Math.min(1, Math.max(0.55, this.stage.viewSize(CAMERA_Z).width / STICKER_REFERENCE_WIDTH));
   }
 
   /** Default placement: around the text block, kept on screen. */
@@ -341,7 +357,7 @@ export class LineTheme {
     sticker.object.position.copy(sticker.anchor);
     sticker.object.position.y += Math.sin(now * 1.6 + sticker.slot * 1.3) * 0.12;
     sticker.object.rotation.z = Math.sin(now * 1.1 + sticker.slot * 2) * 0.1 + settle * 0.6 * (sticker.slot % 2 ? 1 : -1);
-    sticker.object.scale.setScalar(pop);
+    sticker.object.scale.setScalar(pop * this.stickerScale());
     sticker.material.opacity = clamp01(age / 0.2) * deck.opacity;
   }
 
@@ -389,6 +405,8 @@ export class LineTheme {
       const lit = smoothstep(i / 3, (i + 1) / 3, gap.progress);
       dot.position.y = Math.abs(Math.sin(frame.now * 4 + i * 0.7)) * 0.3 * (0.4 + lit);
       dot.scale.setScalar((0.6 + 0.5 * lit + frame.pulse * 0.1) * appear * anticipation);
+      dot.material.color.copy(this.colors.lyric);
+      dot.material.emissive.copy(this.colors.highlight);
       dot.material.emissiveIntensity = lit * 0.4;
       dot.material.opacity = (0.3 + 0.7 * lit) * deck.opacity;
     });

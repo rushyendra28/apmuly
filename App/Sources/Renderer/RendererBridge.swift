@@ -10,10 +10,15 @@ import WebKit
 final class RendererBridge: NSObject, ObservableObject {
     private static let logger = Logger(subsystem: "io.github.rushyendra28.apmuly", category: "renderer")
     private static let modeKey = "stageMode"
+    private static let themeKey = "stageTheme"
+    private static let pacingKey = "livePacing"
     private static let tickInterval: TimeInterval = 1.0 / 30
     private static let handlerName = "apmuly"
 
     @Published private(set) var mode: StageMode
+    @Published private(set) var theme: StageTheme
+    /// Live singer pacing in the stage: words start on the singer's vocal onsets.
+    @Published private(set) var livePacing: Bool
     /// Set when the renderer can't start; the UI falls back to the native lyrics sheet.
     @Published private(set) var failure: String?
 
@@ -26,6 +31,7 @@ final class RendererBridge: NSObject, ObservableObject {
     private var sentLyricsVersions: [String: Int] = [:]
     private var sentInsightVersions: [String: Int] = [:]
     private var sentTrackStates: [String: String] = [:]
+    private var sentPalettes: [String: ThemePalette] = [:]
     private var sentArtwork: Set<String> = []
     private let encoder = JSONEncoder()
 
@@ -34,6 +40,8 @@ final class RendererBridge: NSObject, ObservableObject {
         audio = model.audioTap
         self.defaults = defaults
         mode = defaults.string(forKey: Self.modeKey).flatMap(StageMode.init(rawValue:)) ?? .visualizer
+        theme = defaults.string(forKey: Self.themeKey).flatMap(StageTheme.init(rawValue:)) ?? .kinetic
+        livePacing = defaults.object(forKey: Self.pacingKey) as? Bool ?? true
         super.init()
     }
 
@@ -78,6 +86,23 @@ final class RendererBridge: NSObject, ObservableObject {
         audio.stop()
     }
 
+    func select(_ theme: StageTheme) {
+        self.theme = theme
+        defaults.set(theme.rawValue, forKey: Self.themeKey)
+        call("setTheme", argument: theme.rawValue)
+    }
+
+    func toggleLivePacing() {
+        livePacing.toggle()
+        defaults.set(livePacing, forKey: Self.pacingKey)
+        sendOptions()
+    }
+
+    /// The page draws Lyrics mode itself (live singer pacing, the song's colours).
+    private func sendOptions() {
+        call("setOptions", argument: livePacing ? #"{"sheet":true,"pacing":true}"# : #"{"sheet":true,"pacing":false}"#)
+    }
+
     func select(_ mode: StageMode) {
         self.mode = mode
         defaults.set(mode.rawValue, forKey: Self.modeKey)
@@ -120,7 +145,13 @@ final class RendererBridge: NSObject, ObservableObject {
         let lyricsVersion = model.lyricsVersions[id] ?? 0
         if sentLyricsVersions[id] != lyricsVersion, case .loaded(.lyrics(let doc)) = deck.lyrics, doc.timing != .unsynced {
             sentLyricsVersions[id] = lyricsVersion
-            send("setLyrics", RendererPayload.Lyrics(trackID: id, document: doc))
+            let payload = RendererPayload.Lyrics(trackID: id, document: doc)
+            send("setLyrics", payload)
+        }
+        if let palette = model.palettes[id], sentPalettes[id] != palette {
+            sentPalettes[id] = palette
+            send("setPalette", RendererPayload.Palette(trackID: id, lyric: palette.lyric,
+                                                       highlight: palette.highlight, secondary: palette.secondary))
         }
         if let version = model.insightVersions[id], sentInsightVersions[id] != version, let insights = model.insights[id] {
             sentInsightVersions[id] = version
@@ -163,7 +194,10 @@ final class RendererBridge: NSObject, ObservableObject {
             sentLyricsVersions = [:]
             sentInsightVersions = [:]
             sentTrackStates = [:]
+            sentPalettes = [:]
             sentArtwork = []
+            sendOptions()
+            call("setTheme", argument: theme.rawValue)
             call("setMode", argument: mode.rawValue)
             Self.logger.info("Renderer ready")
         case "error":

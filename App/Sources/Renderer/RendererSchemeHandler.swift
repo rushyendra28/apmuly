@@ -46,6 +46,7 @@ final class RendererSchemeHandler: NSObject, WKURLSchemeHandler {
         case "js", "mjs": "text/javascript"
         case "json": "application/json"
         case "html": "text/html; charset=utf-8"
+        case "woff2": "font/woff2"
         default: UTType(filenameExtension: file.pathExtension)?.preferredMIMEType ?? "application/octet-stream"
         }
     }

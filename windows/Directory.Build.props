@@ -1,0 +1,23 @@
+<Project>
+  <!-- Shared settings for every project under windows/. -->
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Version>1.2.0</Version>
+    <AssemblyVersion>1.2.0.0</AssemblyVersion>
+    <FileVersion>1.2.0.0</FileVersion>
+    <Company>Apmuly</Company>
+    <Product>Apmuly</Product>
+    <Copyright>Copyright (c) Apmuly contributors. MIT License.</Copyright>
+    <Deterministic>true</Deterministic>
+    <IsSrcProject>$([System.String]::Copy('$(MSBuildProjectDirectory)').Replace('\','/').Contains('/src/'))</IsSrcProject>
+  </PropertyGroup>
+
+  <!-- Production code builds warning-free. -->
+  <PropertyGroup Condition="'$(IsSrcProject)' == 'true'">
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+</Project>

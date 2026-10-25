@@ -60,7 +60,7 @@ public enum WordRetimer {
 
     private static func place(_ line: LyricLine, anchors: [Int: TimeInterval]) -> [LyricWord] {
         let words = line.words
-        let weights = words.map { Double(WordTimingEstimator.syllables(in: $0.text)) }
+        let weights = WordTimingEstimator.weights(for: words.map(\.text))
         let weight = { (from: Int, to: Int) in weights[from..<to].reduce(0, +) }
         let anchorIndices = anchors.keys.sorted()
         var starts = [TimeInterval](repeating: line.start, count: words.count)

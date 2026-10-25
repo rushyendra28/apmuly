@@ -25,11 +25,14 @@ export class Stage {
 
     this.resize();
     window.addEventListener('resize', () => this.resize());
+    window.matchMedia?.('(resolution: 2dppx)').addEventListener?.('change', () => this.resize());
   }
 
   resize() {
     const width = window.innerWidth;
     const height = window.innerHeight;
+    // Re-read the pixel density: the window may have moved to a display with a different one.
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.setSize(width, height, false);
     this.composer.setSize(width, height);
     this.camera.aspect = width / Math.max(1, height);
@@ -52,6 +55,7 @@ export class Stage {
     this.camera.fov = 45;
     this.camera.updateProjectionMatrix();
     this.camera.lookAt(0, 0, 0);
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1;
   }
 

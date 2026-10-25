@@ -2,8 +2,10 @@
 // Renders each theme's placeholder demo in headless Chrome (real time, via the DevTools
 // protocol) and saves screenshots. Reports any renderer errors.
 //
-// Usage: node scripts/preview-themes.mjs <outDir> [seconds=4] [scenes=lyrics,nolyrics]
-// 'lyrics' = placeholder lyrics + emoji; 'nolyrics' = the visualizer for songs without lyrics.
+// Usage: node scripts/preview-themes.mjs <outDir> [seconds=4] [scenes=lyrics,nolyrics,grunge,…] [sizes=1280x720]
+// Several window sizes (e.g. 1280x720,700x900,1920x800) each get their own screenshots: <scene>-<size>.png.
+// 'lyrics' = Kinetic Depth with placeholder lyrics + emoji; 'nolyrics' = its visualizer for songs without
+// lyrics; 'grunge' / 'paper' (+ '-nolyrics') = the same scenes in the other themes; 'sheet' = Lyrics mode.
 // Serves App/Resources/Renderer itself on 127.0.0.1:8765 while it runs.
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
@@ -16,8 +18,19 @@ const CHROME = process.env.CHROME_PATH ?? '/Applications/Google Chrome.app/Conte
 const PORT = 9333;
 const SERVE_PORT = 8765;
 const ROOT = resolve(fileURLToPath(new URL('../App/Resources/Renderer', import.meta.url)));
-const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.json': 'application/json' };
-const [outDir = 'theme-previews', seconds = '4', list = 'lyrics,nolyrics'] = process.argv.slice(2);
+const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.json': 'application/json', '.woff2': 'font/woff2' };
+const SCENES = {
+  lyrics: 'demo&t=0.5',
+  nolyrics: 'demo&nolyrics',
+  grunge: 'demo&t=0.5&theme=grunge',
+  'grunge-nolyrics': 'demo&nolyrics&theme=grunge',
+  paper: 'demo&t=0.5&theme=paper',
+  'paper-nolyrics': 'demo&nolyrics&theme=paper',
+  sheet: 'demo&t=0.5&mode=lyrics',
+  'sheet-grunge': 'demo&t=0.5&mode=lyrics&theme=grunge',
+};
+const [outDir = 'theme-previews', seconds = '4', list = Object.keys(SCENES).join(','), sizeList = '1280x720'] = process.argv.slice(2);
+const sizes = sizeList.split(',').map((s) => s.split('x').map(Number));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Minimal static server (localhost only, confined to the renderer folder).
@@ -83,18 +96,29 @@ const send = (method, params = {}) => new Promise((resolve) => {
 await send('Runtime.enable');
 await send('Log.enable');
 let failures = 0;
+for (const [width, height] of sizes) {
+await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false });
+const suffix = sizes.length > 1 ? `-${width}x${height}` : '';
 for (const theme of list.split(',')) {
   pageErrors = [];
-  const query = theme === 'nolyrics' ? 'demo&nolyrics' : 'demo&t=0.5';
+  const query = SCENES[theme];
+  if (!query) {
+    console.log(`${theme}: unknown scene (${Object.keys(SCENES).join(', ')})`);
+    failures++;
+    continue;
+  }
   await send('Page.navigate', { url: `http://127.0.0.1:8765/index.html?${query}` });
   await sleep(Number(seconds) * 1000);
   const status = await send('Runtime.evaluate', { expression: 'JSON.stringify(document.documentElement.dataset)', returnByValue: true });
   const shot = await send('Page.captureScreenshot', { format: 'png' });
-  writeFileSync(join(outDir, `${theme}.png`), Buffer.from(shot.result.data, 'base64'));
+  writeFileSync(join(outDir, `${theme}${suffix}.png`), Buffer.from(shot.result.data, 'base64'));
   const dataset = JSON.parse(status.result.result.value);
   if (dataset.error || !dataset.ready) failures++;
-  console.log(`${theme}: ${dataset.error ? `ERROR ${dataset.error}` : dataset.ready ? 'ok' : 'not ready'}`);
-  [...new Set(pageErrors)].slice(0, 5).forEach((e) => console.log(`  page: ${String(e).split('\n').slice(0, 3).join(' | ')}`));
+  const pacer = dataset.pacer ? ` (singer pacing ${dataset.pacer})` : '';
+  console.log(`${theme}${suffix}: ${dataset.error ? `ERROR ${dataset.error}` : dataset.ready ? `ok${pacer}` : 'not ready'}`);
+  [...new Set(pageErrors)].filter((e) => !String(e).includes('favicon')).slice(0, 5)
+    .forEach((e) => console.log(`  page: ${String(e).split('\n').slice(0, 3).join(' | ')}`));
+}
 }
 ws.close();
 chrome.kill();

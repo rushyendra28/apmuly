@@ -27,6 +27,17 @@ struct ApmulyApp: App {
                 Button("Toggle Lyrics / Visualizer") { renderer.select(renderer.mode.toggled) }
                     .keyboardShortcut("l", modifiers: .command)
             }
+            CommandMenu("Theme") {
+                ForEach(StageTheme.allCases) { theme in
+                    Button(theme.title) { renderer.select(theme) }
+                        .keyboardShortcut(KeyEquivalent(theme.shortcut), modifiers: .command)
+                }
+                Divider()
+                Button("Next Theme") { renderer.select(renderer.theme.next) }
+                    .keyboardShortcut("t", modifiers: .command)
+                Divider()
+                Button(renderer.livePacing ? "Turn Off Live Singer Pacing" : "Turn On Live Singer Pacing") { renderer.toggleLivePacing() }
+            }
         }
     }
 }

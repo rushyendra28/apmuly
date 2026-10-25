@@ -6,9 +6,10 @@ const DEPTH = 0.32;
 const CAP_CENTER = 0.36;
 const CAP_HEIGHT = 0.72;
 const MAX_CACHE = 400;
-const FALLBACK_FONT = "800 128px 'SF Pro Rounded', ui-rounded, -apple-system, 'Hiragino Maru Gothic ProN', "
-  + "'Hiragino Sans', 'Kohinoor Devanagari', 'Apple SD Gothic Neo', 'PingFang SC', sans-serif";
-const FALLBACK_PX = 128;
+const FALLBACK_PX = 192;
+const FALLBACK_FONT = `800 ${FALLBACK_PX}px 'SF Pro Rounded', ui-rounded, -apple-system, 'Segoe UI Variable Display', 'Segoe UI', `
+  + "'Hiragino Maru Gothic ProN', 'Hiragino Sans', 'Kohinoor Devanagari', 'Apple SD Gothic Neo', 'PingFang SC', "
+  + "'Microsoft YaHei', 'Yu Gothic UI', 'Malgun Gothic', 'Nirmala UI', sans-serif";
 const WHITE = new THREE.Color('#ffffff');
 const MAX_EMISSIVE = 0.55;
 
@@ -63,7 +64,7 @@ export class WordFactory {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.lineJoin = 'round';
-      ctx.lineWidth = 14;
+      ctx.lineWidth = FALLBACK_PX * 0.1;
       ctx.strokeStyle = 'rgba(0,0,0,0.85)';
       ctx.strokeText(text, canvas.width / 2, canvas.height / 2);
       ctx.fillStyle = '#ffffff';
@@ -71,6 +72,7 @@ export class WordFactory {
 
       const texture = new THREE.CanvasTexture(canvas);
       texture.colorSpace = THREE.SRGBColorSpace;
+      texture.anisotropy = 8;
       const worldPerPx = CAP_HEIGHT / (FALLBACK_PX * 0.72);
       return {
         texture,
@@ -101,9 +103,10 @@ export class WordFactory {
   /**
    * @param {object} [style] MeshPhysicalMaterial overrides (metalness, roughness, iridescence…).
    * @param {number} [glowLimit] Max emissive intensity (themes with white-on-dark text can go brighter).
+   * @param {number} [baseGlow] Emissive intensity at rest, so letter faces stay bright and readable.
    */
-  make(text, color, style = {}, glowLimit = MAX_EMISSIVE) {
-    return new WordMesh(this, text, color, style, glowLimit);
+  make(text, color, style = {}, glowLimit = MAX_EMISSIVE, baseGlow = 0) {
+    return new WordMesh(this, text, color, style, glowLimit, baseGlow);
   }
 
   /** Random points on the word's surface, in the same local space as its mesh. */
@@ -132,12 +135,14 @@ export class WordFactory {
 
 /** One renderable word with colour, opacity and glow controls. */
 export class WordMesh {
-  constructor(factory, text, color, style = {}, glowLimit = MAX_EMISSIVE) {
+  constructor(factory, text, color, style = {}, glowLimit = MAX_EMISSIVE, baseGlow = 0) {
     this.text = text;
     this.object = new THREE.Group();
     this.color = new THREE.Color(color);
+    this.glowColor = this.color.clone();
     this.ownedGeometries = [];
     this.glowLimit = glowLimit;
+    this.baseGlow = baseGlow;
 
     if (factory.canExtrude(text)) {
       const { geometry, width } = factory.geometry(text);
@@ -177,10 +182,16 @@ export class WordMesh {
 
   setColor(color) {
     this.color.set(color);
-    if (this.kind === 'solid') {
-      this.material.color.copy(this.color);
-      this.material.emissive.copy(this.color);
-    }
+    this.glowColor.copy(this.color);
+    if (this.kind === 'solid') this.material.color.copy(this.color);
+    this.setGlow(this.glow);
+  }
+
+  /** Body colour plus a glow colour the word shifts toward as it glows. */
+  setTint(color, glowColor) {
+    this.color.copy(color);
+    this.glowColor.copy(glowColor);
+    if (this.kind === 'solid') this.material.color.copy(color);
     this.setGlow(this.glow);
   }
 
@@ -196,10 +207,12 @@ export class WordMesh {
    */
   setGlow(glow) {
     this.glow = glow;
+    const g = Math.max(0, glow);
     if (this.kind === 'solid') {
-      this.material.emissiveIntensity = Math.min(this.glowLimit, Math.max(0, glow) * 0.3 * (this.glowLimit / MAX_EMISSIVE));
+      this.material.emissive.copy(this.color).lerp(this.glowColor, Math.min(1, g / 1.2));
+      this.material.emissiveIntensity = Math.min(this.glowLimit, this.baseGlow + g * 0.3 * (this.glowLimit / MAX_EMISSIVE));
     } else {
-      this.front.color.copy(this.color).lerp(WHITE, Math.min(0.3, Math.max(0, glow) * 0.12));
+      this.front.color.copy(this.color).lerp(this.glowColor, Math.min(0.6, g * 0.35)).lerp(WHITE, Math.min(0.2, g * 0.08));
     }
   }
 

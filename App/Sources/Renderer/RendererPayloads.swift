@@ -61,6 +61,14 @@ enum RendererPayload {
         }
     }
 
+    /// The song's colours, from its album artwork.
+    struct Palette: Encodable {
+        let trackID: String
+        let lyric: String
+        let highlight: String
+        let secondary: String
+    }
+
     struct Artwork: Encodable {
         let trackID: String
         let url: String
@@ -113,4 +121,32 @@ enum StageMode: String, CaseIterable, Identifiable {
     }
 
     var toggled: StageMode { self == .visualizer ? .lyrics : .visualizer }
+}
+
+/// The 3D look of the Visualizer.
+enum StageTheme: String, CaseIterable, Identifiable {
+    /// Satin 3D words flying through warp-speed streaks.
+    case kinetic
+    /// Distressed poster type on creased paper with grainy spray paint.
+    case grunge
+    /// Hand-drawn brush doodles and stickers around bold words on paper and colour scenes.
+    case paper
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .kinetic: "Kinetic Depth"
+        case .grunge: "Grunge"
+        case .paper: "Paper Brush"
+        }
+    }
+
+    /// Keyboard shortcut "1", "2", …
+    var shortcut: Character { Character(String((Self.allCases.firstIndex(of: self) ?? 0) + 1)) }
+
+    var next: StageTheme {
+        let all = Self.allCases
+        return all[((all.firstIndex(of: self) ?? 0) + 1) % all.count]
+    }
 }

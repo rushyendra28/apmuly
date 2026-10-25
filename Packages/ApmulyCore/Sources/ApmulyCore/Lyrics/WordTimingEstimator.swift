@@ -1,8 +1,20 @@
 import Foundation
 
-/// Estimates per-word timing inside a line from syllable counts,
-/// for sources that only provide line-level timestamps.
+/// Estimates per-word timing inside a line from how words are usually sung,
+/// for sources that only provide line-level timestamps: syllable counts, quick filler words,
+/// a longer hold on the line's last word and a short breath at commas.
 public enum WordTimingEstimator {
+    /// Singers stretch the last word of a phrase.
+    static let phraseFinalHold = 1.6
+    /// …and pause briefly at a comma.
+    static let commaHold = 1.3
+    /// One-syllable filler words are sung quicker than content words.
+    static let fillerWeight = 0.6
+    private static let fillerWords: Set<String> = [
+        "a", "an", "the", "i", "im", "to", "of", "in", "on", "at", "and", "or", "but", "my", "me", "you", "your",
+        "it", "its", "is", "be", "we", "he", "she", "so", "for", "with", "as", "by", "if", "oh", "da", "la", "na",
+        "de", "el", "y", "que", "en", "le", "les", "et", "un", "une", "der", "die", "das", "und",
+    ]
     /// Upper bound on how long one syllable is sung; keeps short lines from
     /// stretching across long instrumental gaps.
     static let maxSecondsPerSyllable: TimeInterval = 0.45
@@ -13,15 +25,31 @@ public enum WordTimingEstimator {
         let tokens = text.split(whereSeparator: \.isWhitespace).map(String.init)
         guard !tokens.isEmpty, end > start else { return [] }
 
-        let weights = tokens.map { Double(syllables(in: $0)) }
+        let weights = weights(for: tokens)
         let totalWeight = weights.reduce(0, +)
-        let span = min(end - start, totalWeight * maxSecondsPerSyllable + heldNoteAllowance)
+        let syllableCount = tokens.map { Double(syllables(in: $0)) }.reduce(0, +)
+        let span = min(end - start, syllableCount * maxSecondsPerSyllable + heldNoteAllowance)
 
-        let boundaries = weights.reduce(into: [start]) { acc, weight in
+        var boundaries = weights.reduce(into: [start]) { acc, weight in
             acc.append(acc[acc.count - 1] + span * weight / totalWeight)
         }
+        boundaries[boundaries.count - 1] = start + span // no floating-point drift past the line end
         return tokens.indices.map { i in
             LyricWord(text: tokens[i], start: boundaries[i], end: boundaries[i + 1])
+        }
+    }
+
+    /// Relative sung length of each word of a line (all > 0).
+    public static func weights(for tokens: [String]) -> [Double] {
+        tokens.indices.map { i in
+            let token = tokens[i]
+            let syllableCount = syllables(in: token)
+            let bare = token.lowercased().filter(\.isLetter)
+            var weight = Double(syllableCount)
+            if syllableCount == 1, fillerWords.contains(bare) { weight *= fillerWeight }
+            if i == tokens.count - 1, tokens.count > 1 { weight *= phraseFinalHold }
+            else if token.hasSuffix(",") || token.hasSuffix(";") || token.hasSuffix("—") { weight *= commaHold }
+            return weight
         }
     }
 

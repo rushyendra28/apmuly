@@ -58,5 +58,6 @@ if [[ -n "$NOTARY_PROFILE" ]]; then
   xcrun stapler staple "$DMG"
 fi
 
-shasum -a 256 "$DMG" | tee "$DMG.sha256"
+# Name only (no dist/ prefix), so `shasum -c` works next to the downloaded DMG.
+(cd dist && shasum -a 256 "${DMG:t}" | tee "${DMG:t}.sha256")
 echo "==> Done: $DMG"

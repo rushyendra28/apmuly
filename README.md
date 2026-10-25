@@ -11,9 +11,9 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/rushyendra28/apmuly/releases/latest">Download</a> ·
-  <a href="#install">Install</a> ·
-  <a href="#windows">Windows</a> ·
+  <a href="#download">Download</a> ·
+  <a href="#install-on-mac">Install on Mac</a> ·
+  <a href="#install-on-windows">Install on Windows</a> ·
   <a href="#using-apmuly">Use</a> ·
   <a href="#build-from-source">Build from source</a> ·
   <a href="#privacy">Privacy</a>
@@ -62,16 +62,31 @@
 - **Auto-sync** — Apmuly listens to the singer (on-device speech recognition) to correct lyric files that are
   early or late, and compensates for Bluetooth headphone delay.
 
+## Download
+
+Every [release](https://github.com/rushyendra28/apmuly/releases/latest) has the Mac and the Windows app side by side —
+pick the file for your computer under **Assets**:
+
+| Your computer | Download | Then |
+|---|---|---|
+| **Mac** (Apple silicon or Intel) | `Apmuly-x.y.z.dmg` | [Install on Mac](#install-on-mac) |
+| **Windows PC** (most PCs: Intel / AMD) | `Apmuly-Windows-x.y.z-x64.zip` | [Install on Windows](#install-on-windows) |
+| **Windows on ARM** (e.g. Snapdragon laptops) | `Apmuly-Windows-x.y.z-arm64.zip` | [Install on Windows](#install-on-windows) |
+
+<sub>Not sure which Windows file? Open **Settings → System → About**: "x64-based processor" → `x64`, "ARM-based
+processor" → `arm64`. Checksums: `Apmuly-x.y.z.dmg.sha256` (Mac) and `SHA256SUMS-windows.txt` (Windows).</sub>
+
 ## Requirements
 
-| | |
-|---|---|
-| **macOS** | 12 (Monterey) or later — Apple silicon or Intel |
-| **Music** | The Music app with an Apple Music subscription, or songs in your library |
-| **Internet** | To look up lyrics |
-| **Optional** | [Apple Intelligence](https://support.apple.com/en-us/121115) turned on (macOS 26, Apple silicon) for the best emoji. Without it, Apmuly uses a simpler built-in analysis. |
+| | Mac | Windows |
+|---|---|---|
+| **System** | macOS 12 (Monterey) or later — Apple silicon or Intel | Windows 10 (version 1809) or later, or Windows 11 — x64 or ARM64 |
+| **Music** | The Music app with an Apple Music subscription, or songs in your library | [Apple Music for Windows](https://apps.microsoft.com/detail/9pfhdd62mxs1) (or any player that shows in Windows' media controls) |
+| **Internet** | To look up lyrics | To look up lyrics |
+| **Also needed** | — | Microsoft Edge WebView2 Runtime (built into Windows 11 and up-to-date Windows 10) |
+| **Optional** | [Apple Intelligence](https://support.apple.com/en-us/121115) (macOS 26, Apple silicon) for the best emoji; otherwise a simpler built-in analysis | — |
 
-Everything works on macOS 12. A few extras need newer versions:
+On the Mac everything works on macOS 12. A few extras need newer versions:
 
 | Feature | macOS |
 |---|---|
@@ -80,7 +95,7 @@ Everything works on macOS 12. A few extras need newer versions:
 | Auto-sync and learned singer timing | 14.2+ (needs audio capture and on-device speech recognition) |
 | Emoji from Apple's on-device language model | 26+ with Apple Intelligence |
 
-## Install
+## Install on Mac
 
 1. Download **`Apmuly-x.y.z.dmg`** from the [latest release](https://github.com/rushyendra28/apmuly/releases/latest).
 2. Open it and drag **Apmuly** into **Applications**.
@@ -115,17 +130,22 @@ The first time you play a song, macOS asks for these:
 You can change these later in **System Settings → Privacy & Security** (Automation, Screen & System Audio
 Recording, Speech Recognition).
 
-## Windows
+## Install on Windows
 
-Apmuly also runs on **Windows 10 (version 2004) or later and Windows 11**, with the same three themes and Lyrics
-mode. It follows **Apple Music for Windows** (or any player that shows up in Windows' media controls) and hears the
-music through audio loopback for the beat, spectrum and live word pacing.
+The Windows app has the same three themes, Lyrics mode and live singer pacing. It follows **Apple Music for Windows**
+(or any player that shows up in Windows' media controls) and hears the music through audio loopback.
 
-Download **`Apmuly-Windows-x.y.z-x64.zip`** (or `-arm64`) from the
-[latest release](https://github.com/rushyendra28/apmuly/releases/latest), unzip it anywhere and run
-**`Apmuly.exe`**. Windows SmartScreen may warn about an unrecognised app the first time — choose
-**More info → Run anyway**. See [`windows/README.md`](windows/README.md) for details, building from source and what
-differs from the Mac version.
+1. Download **`Apmuly-Windows-x.y.z-x64.zip`** (or **`-arm64.zip`**, see [Download](#download)) from the
+   [latest release](https://github.com/rushyendra28/apmuly/releases/latest).
+2. Right-click the zip → **Extract All…**, and choose a folder you'll keep (for example `Documents\Apmuly`).
+   Run it from the extracted folder, not from inside the zip.
+3. Open **`Apmuly.exe`**. The first time, Windows SmartScreen may say it "protected your PC" because the app isn't
+   code-signed — click **More info → Run anyway**.
+4. Play a song in Apple Music. Click the Apmuly window once so it receives your key presses.
+
+No installer, nothing written outside the folder except settings and cached lyrics in `%LOCALAPPDATA%\Apmuly`. To
+uninstall, delete the folder (and that one, if you like). See [`windows/README.md`](windows/README.md) for details,
+building from source and what differs from the Mac version.
 
 ## Using Apmuly
 
@@ -162,12 +182,15 @@ is your own adjustment.
 
 | Problem | Fix |
 |---|---|
-| "Apmuly can't be opened" / "is damaged" | See [Install → First launch](#install). |
+| "Apmuly can't be opened" / "is damaged" (Mac) | See [Install on Mac → First launch](#install-on-mac). |
+| "Windows protected your PC" | Click **More info → Run anyway** (the app isn't code-signed). |
+| Windows: no song detected | Make sure Apple Music for Windows is playing and shows in the volume flyout's media controls. |
+| Windows: the window is blank | Install the [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/). |
 | Nothing happens / "needs permission" message | Allow Apmuly under **Privacy & Security → Automation → Apmuly → Music**. To start over: `tccutil reset AppleEvents io.github.rushyendra28.apmuly` |
 | Visuals don't move with the music; no spectrum | Allow Apmuly under **Privacy & Security → Screen & System Audio Recording**. |
 | "No lyrics found" / visualizer instead of lyrics | LRCLIB has no synced lyrics for that track (common for remixes, sped-up edits, classical). |
 | Lyrics a little early or late | Press **]** or **[**. Auto-sync also corrects this after a few lines when it can hear the vocals clearly. |
-| Words run ahead of or behind the singer | Apmuly learns the singer's pace as the song plays (macOS 14.2+); choruses and later plays of the song get it right from the start. |
+| Words run ahead of or behind the singer | Live pacing follows the singer's vocal onsets; press **P** to compare with it off. On the Mac (14.2+) Apmuly also learns the singer's timing, so choruses and later plays get it right from the start. |
 | Lyrics briefly wrong after skipping | They catch up within a second; Apmuly checks Music twice a second. |
 
 ## Build from source
@@ -198,12 +221,14 @@ make project
 
 ### Making a release
 
-```sh
-make release
-```
+Mac and Windows ship in the same GitHub release:
 
-This builds a universal app and creates `dist/Apmuly-<version>.dmg` plus a `.sha256` checksum, ready to attach to a
-GitHub release. Set the version in [`Config/Base.xcconfig`](Config/Base.xcconfig) (`MARKETING_VERSION`).
+1. Set the version in [`Config/Base.xcconfig`](Config/Base.xcconfig) (`MARKETING_VERSION`) and
+   [`windows/Directory.Build.props`](windows/Directory.Build.props) (`Version`).
+2. `make release` builds a universal Mac app and creates `dist/Apmuly-<version>.dmg` plus a `.sha256` checksum.
+3. Push a tag `v<version>` and create the release for it with the DMG and checksum attached. The
+   [Windows workflow](.github/workflows/windows.yml) builds, tests and attaches `Apmuly-Windows-<version>-x64.zip`,
+   `-arm64.zip` and `SHA256SUMS-windows.txt` to that same release.
 
 With an Apple Developer ID you can sign and notarize, so users don't need the first-launch step:
 

@@ -7,7 +7,8 @@ The stage is the shared three.js renderer in `App/Resources/Renderer/`, hosted u
 ## Install
 
 1. Download `Apmuly-Windows-<version>-x64.zip` (Intel/AMD) or `-arm64.zip` (Snapdragon/ARM) from the
-   GitHub release (or the **Windows** workflow's artifacts).
+   [latest release](https://github.com/rushyendra28/apmuly/releases/latest) — the same release as the Mac app — or
+   from the **Windows** workflow's artifacts.
 2. Unzip anywhere you like (for example `%LOCALAPPDATA%\Programs\Apmuly`) and run `Apmuly.exe`.
    The build is self-contained: no .NET install is needed.
 3. Apmuly needs the **Microsoft Edge WebView2 Runtime** (preinstalled on Windows 11 and on up-to-date

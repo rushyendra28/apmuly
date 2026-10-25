@@ -4,6 +4,10 @@ import { wordPhase } from '../core/timeline.js';
 import { clamp01, lerp, easeOutBack, easeOutCubic, easeInCubic, smoothstep, seeded, damp } from '../core/easing.js';
 import { studioEnvironment } from '../engine/environment.js';
 import { CAMERA_Z } from '../engine/stage.js';
+import { composeLine } from '../core/grungeLayout.js';
+import { InkTextures, loadDisplayFont } from '../engine/ink.js';
+import { FrameChrome } from '../engine/frameChrome.js';
+import { FilmGrain } from '../engine/filmGrain.js';
 
 // Lyrics
 const FLIGHT = 0.9;
@@ -11,17 +15,27 @@ const MIN_FLIGHT = 0.28;
 const EXIT = 0.75;
 const STAGGER = 0.035;
 /** Depth karaoke: the word being sung pushes toward you; sung words settle back. */
-const SINGING_DEPTH = 1.4;
-const SUNG_DEPTH = -0.6;
+const SINGING_DEPTH = 0.7;
+const SUNG_DEPTH = -0.3;
+/** Words that have landed but aren't sung yet wait dimmed, so the sung word stands out. */
+const WAITING_OPACITY = 0.5;
+const SUNG_OPACITY = 0.85;
 const STICKER_FLIGHT = 0.5;
 const STICKER_DEPTH = 0.6;
 const STICKER_REACH = 1.5;
 const DOLLY = 1.1;
 const FOV = 45;
 const FOV_PUNCH = 1.6;
+const SCRIM_Z = -2.5;
+const CHROME_INK = '#efece6';
+/** Kinetic words stay smaller than the 2D themes' posters: they fly in 3D and push toward you. */
+const MAX_WORD_SIZE = 1.7;
+/** Layouts centre rows on the em box; the extruded font is centred on its capitals. */
+const CAP_OFFSET = 0;
+const SCRIM_OPACITY = 0.85;
 
 // Warp streaks (two parallax layers)
-const STREAKS = 1100;
+const STREAKS = 800;
 const FIELD_DEPTH = 220;
 const BASE_SPEED = 22;
 const FAR_LAYER_SPEED = 0.35;
@@ -39,11 +53,12 @@ const VIZ_IDLE = 0.35;
 const VIZ_GAP = 0.65;
 const VIZ_BEHIND_SHEET = 0.4;
 /** Title sits low and slightly forward, in front of the lower spectrum bars. */
-const TITLE_Y = -3.9;
+/** Title baseline sits this far above the bottom of the window (world units at TITLE_Z). */
+const TITLE_MARGIN = 2.1;
 const TITLE_Z = 2;
 
 /**
- * Kinetic Depth — chrome words fly out of warp-speed light streaks and land with a springy bounce
+ * Kinetic Depth — chrome words, tinted with the album artwork's colours, fly out of warp-speed light streaks and land with a springy bounce
  * exactly as they're sung; the sung word pushes toward you; emoji fly in to land
  * on their words; finished lines rocket past the camera. Songs without lyrics become an audio
  * visualizer: a chrome spectrum ring, a pulsing core and a rushing tunnel, titled in chrome.
@@ -51,22 +66,37 @@ const TITLE_Z = 2;
 export class KineticDepth extends LineTheme {
   static font = 'bold';
   static textColor = '#f4f5f7';
-  static textStyle = { metalness: 0.9, roughness: 0.18, clearcoat: 0.6, clearcoatRoughness: 0.1 };
+  /** Satin, not mirror chrome: the face keeps the song's colour and stays readable from any angle. */
+  static textStyle = { metalness: 0.3, roughness: 0.3, clearcoat: 1, clearcoatRoughness: 0.05 };
+  static glowLimit = 0.8;
+  static baseGlow = 0.3;
   static stickerLead = STICKER_FLIGHT;
 
   build() {
+    // The same printed frame as the other themes (song, artist, timer, marks), in light ink.
+    this.chromeTextures = new InkTextures();
+    this.chrome = new FrameChrome(this.stage, this.chromeTextures, { ink: CHROME_INK });
+    this.grain = new FilmGrain(this.stage);
+    this.chromeReady = false;
+    loadDisplayFont().then(() => {
+      if (!this.root.parent) return;
+      this.chromeReady = true;
+      this.chrome.refresh();
+    });
     this.stage.scene.background = new THREE.Color('#000000');
-    this.environment = studioEnvironment(this.stage.renderer);
-    this.stage.scene.environment = this.environment;
-    this.ownedDisposables.push(this.environment);
+    const environment = studioEnvironment(this.stage.renderer);
+    this.stage.scene.environment = environment.texture;
+    this.ownedDisposables.push(environment);
 
     this.streaks = this.#buildStreaks();
     const key = new THREE.DirectionalLight('#ffffff', 1.3);
     key.position.set(4, 6, 10);
     // A light that sweeps across the scene so the chrome letters glint.
     this.glint = new THREE.PointLight('#ffffff', 40, 30);
-    this.root.add(this.streaks, key, this.glint, new THREE.AmbientLight('#ffffff', 0.2));
+    this.scrim = this.#buildScrim();
+    this.root.add(this.streaks, this.scrim, key, this.glint, new THREE.AmbientLight('#ffffff', 0.2));
 
+    this.barColor = new THREE.Color();
     this.viz = this.#buildVisualizer();
     this.speed = BASE_SPEED;
     this.dolly = 0;
@@ -78,6 +108,27 @@ export class KineticDepth extends LineTheme {
   }
 
   // MARK: Scene
+
+  /** A soft dark pool behind the lyric line, so streaks never compete with the words. */
+  #buildScrim() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+    const gradient = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
+    gradient.addColorStop(0, 'rgba(0,0,0,1)');
+    gradient.addColorStop(0.55, 'rgba(0,0,0,0.8)');
+    gradient.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 256, 256);
+    const texture = new THREE.CanvasTexture(canvas);
+    this.ownedDisposables.push(texture);
+    const scrim = new THREE.Mesh(new THREE.PlaneGeometry(1, 1),
+      new THREE.MeshBasicMaterial({ map: texture, transparent: true, opacity: 0, depthWrite: false, toneMapped: false }));
+    scrim.position.z = SCRIM_Z;
+    scrim.renderOrder = -1;
+    return scrim;
+  }
 
   #buildStreaks() {
     this.streakBase = new Float32Array(STREAKS * 3);
@@ -98,37 +149,55 @@ export class KineticDepth extends LineTheme {
 
   #buildVisualizer() {
     const group = new THREE.Group();
-    const chrome = new THREE.MeshPhysicalMaterial({ color: '#f4f5f7', metalness: 1, roughness: 0.2, clearcoat: 0.6, transparent: true });
-    const bars = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), chrome, BARS);
+    // Rounded pills, each shaded from the lyric colour toward the highlight by its level.
+    const chrome = new THREE.MeshPhysicalMaterial({
+      color: '#ffffff', emissive: '#000000', emissiveIntensity: 0.25, metalness: 0.35, roughness: 0.28, clearcoat: 1, transparent: true,
+    });
+    const bars = new THREE.InstancedMesh(new THREE.CapsuleGeometry(0.5, 1, 6, 16), chrome, BARS);
     bars.frustumCulled = false;
+    this.ownedDisposables.push(bars); // frees its instance buffers
 
-    const core = new THREE.Mesh(new THREE.IcosahedronGeometry(1.25, 1),
-      new THREE.MeshPhysicalMaterial({ color: '#f4f5f7', metalness: 1, roughness: 0.12, clearcoat: 1, flatShading: true, transparent: true }));
-    const shell = new THREE.Mesh(new THREE.IcosahedronGeometry(1.7, 1),
-      new THREE.MeshBasicMaterial({ color: '#ffffff', wireframe: true, transparent: true, opacity: 0.25 }));
-    core.position.z = RING_Z;
-    shell.position.z = RING_Z;
+    // A smooth, iridescent pearl that breathes with the music.
+    const core = new THREE.Mesh(new THREE.IcosahedronGeometry(1.25, 8), new THREE.MeshPhysicalMaterial({
+      color: '#f4f5f7', metalness: 0.9, roughness: 0.1, clearcoat: 1, iridescence: 1, iridescenceIOR: 1.35,
+      iridescenceThicknessRange: [200, 600], transparent: true,
+    }));
+    const shell = new THREE.Mesh(new THREE.TorusGeometry(1.85, 0.012, 8, 160),
+      new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.25 }));
+    // Ring, core and shell scale together to fit any window shape.
+    const ring = new THREE.Group();
+    ring.position.z = RING_Z;
+    ring.add(bars, core, shell);
 
     const ringGeometry = new THREE.RingGeometry(0.985, 1, 128);
     const tunnel = Array.from({ length: TUNNEL_RINGS }, (_, i) => {
-      const ring = new THREE.Mesh(ringGeometry, new THREE.MeshBasicMaterial({
+      const hoop = new THREE.Mesh(ringGeometry, new THREE.MeshBasicMaterial({
         color: '#ffffff', transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide,
       }));
-      ring.position.z = RING_Z - (i / TUNNEL_RINGS) * TUNNEL_DEPTH;
-      group.add(ring);
-      return ring;
+      hoop.position.z = RING_Z - (i / TUNNEL_RINGS) * TUNNEL_DEPTH;
+      group.add(hoop);
+      return hoop;
     });
-    group.add(bars, core, shell);
+    group.add(ring);
     group.visible = false;
     this.root.add(group);
-    return { group, bars, chrome, core, shell, tunnel, dummy: new THREE.Object3D() };
+    return { group, ring, bars, chrome, core, shell, tunnel, dummy: new THREE.Object3D() };
   }
 
   updateScene(frame) {
-    const { now, dt, pulse, level } = frame;
+    const { now, dt, pulse, level, decks, bands } = frame;
+    this.grain.update(now);
+    if (this.chromeReady) {
+      const deck = decks.find((d) => d.role === 'current') ?? null;
+      const info = deck ? this.engine.tracks.get(deck.trackID) ?? null : null;
+      this.chrome.update(now, info, deck ? deck.position : null, bands, false, deck ? deck.opacity : 1);
+    }
     this.speed = damp(this.speed, BASE_SPEED + pulse * 70 + (level ?? 0) * 40, 6, dt);
     this.#updateStreaks(dt);
     this.#updateVisualizer(frame);
+    const view = this.stage.viewSize(CAMERA_Z - SCRIM_Z);
+    this.scrim.scale.set(view.width * 0.95, view.height * 0.6, 1);
+    this.scrim.material.opacity = SCRIM_OPACITY * clamp01(1 - this.vizAmount / VIZ_GAP);
 
     this.glint.position.set(Math.sin(now * 0.7) * 14, 3 + Math.cos(now * 0.5) * 2, 7);
     this.dolly = damp(this.dolly, 0, 2.5, dt);
@@ -153,9 +222,12 @@ export class KineticDepth extends LineTheme {
       const length = (0.4 + this.speed * 0.07) * layer;
       positions.setXYZ(i * 2, this.streakBase[k], this.streakBase[k + 1], z);
       positions.setXYZ(i * 2 + 1, this.streakBase[k], this.streakBase[k + 1], z - length);
-      const fade = clamp01(1 - (CAMERA_Z - z) / FIELD_DEPTH) ** 0.7;
-      const brightness = fade * (layer === 1 ? 0.95 : 0.45);
-      colors.setXYZ(i * 2, brightness * 0.92, brightness * 0.95, brightness);
+      // Distant streaks bunch up behind the words, so they fade out with depth.
+      const fade = clamp01(1 - (CAMERA_Z - z) / FIELD_DEPTH) ** 1.6;
+      const near = layer === 1;
+      const tint = near ? this.colors.lyric : this.colors.highlight;
+      const brightness = fade * (near ? 0.8 : 0.5);
+      colors.setXYZ(i * 2, tint.r * brightness, tint.g * brightness, tint.b * brightness);
       colors.setXYZ(i * 2 + 1, 0, 0, 0);
     }
     positions.needsUpdate = true;
@@ -178,9 +250,11 @@ export class KineticDepth extends LineTheme {
     this.#updateTitle(noLyrics ? current.trackID : null, info, dt);
 
     const viz = this.vizAmount;
-    const { group, bars, chrome, core, shell, tunnel, dummy } = this.viz;
+    const { group, ring, bars, chrome, core, shell, tunnel, dummy } = this.viz;
     group.visible = viz > 0.01;
     if (!group.visible) return;
+    const view = this.stage.viewSize(CAMERA_Z - RING_Z);
+    ring.scale.setScalar(Math.min(1, Math.min(view.width, view.height * 1.15) / (2 * (BAR_RING + BAR_MAX) + 1)));
 
     const spectrum = bands?.length ? bands : null;
     this.ringSpin += dt * (0.12 + pulse * 0.6);
@@ -191,14 +265,19 @@ export class KineticDepth extends LineTheme {
       const height = (0.12 + band * BAR_MAX) * viz;
       const angle = (i / BARS) * Math.PI * 2 + this.ringSpin;
       const radius = BAR_RING + height / 2;
-      dummy.position.set(Math.cos(angle) * radius, Math.sin(angle) * radius, RING_Z);
+      dummy.position.set(Math.cos(angle) * radius, Math.sin(angle) * radius, 0);
       dummy.rotation.set(0, 0, angle - Math.PI / 2);
-      dummy.scale.set(BAR_WIDTH, Math.max(0.001, height), BAR_WIDTH);
+      dummy.scale.set(BAR_WIDTH, Math.max(0.001, height / 2), BAR_WIDTH);
       dummy.updateMatrix();
       bars.setMatrixAt(i, dummy.matrix);
+      bars.setColorAt(i, this.barColor.copy(this.colors.lyric).lerp(this.colors.highlight, clamp01(band * 1.4)));
     }
     bars.instanceMatrix.needsUpdate = true;
+    bars.instanceColor.needsUpdate = true;
     chrome.opacity = clamp01(viz * 1.5);
+    chrome.emissive.copy(this.colors.highlight);
+    core.material.color.copy(this.colors.lyric);
+    shell.material.color.copy(this.colors.highlight);
 
     const coreScale = Math.max(0.001, this.coreAmount * viz * (1 + pulse * 0.25 + (level ?? 0) * 0.6));
     core.scale.setScalar(coreScale);
@@ -211,12 +290,13 @@ export class KineticDepth extends LineTheme {
     shell.material.opacity = 0.25 * this.coreAmount * viz;
 
     const lows = spectrum ? (spectrum[0] + spectrum[1] + spectrum[2]) / 3 : 0.2;
-    tunnel.forEach((ring) => {
-      ring.position.z += this.speed * 0.6 * dt;
-      if (ring.position.z > CAMERA_Z - 1) ring.position.z -= TUNNEL_DEPTH;
-      const depth = clamp01((ring.position.z - (RING_Z - TUNNEL_DEPTH)) / TUNNEL_DEPTH);
-      ring.scale.setScalar(6.5 + lows * 2.5);
-      ring.material.opacity = 0.3 * depth * (1 - smoothstep(0.85, 1, depth)) * viz;
+    tunnel.forEach((hoop) => {
+      hoop.position.z += this.speed * 0.6 * dt;
+      if (hoop.position.z > CAMERA_Z - 1) hoop.position.z -= TUNNEL_DEPTH;
+      const depth = clamp01((hoop.position.z - (RING_Z - TUNNEL_DEPTH)) / TUNNEL_DEPTH);
+      hoop.scale.setScalar(6.5 + lows * 2.5);
+      hoop.material.color.copy(this.colors.highlight);
+      hoop.material.opacity = 0.3 * depth * (1 - smoothstep(0.85, 1, depth)) * viz;
     });
   }
 
@@ -230,20 +310,25 @@ export class KineticDepth extends LineTheme {
       const make = (text, fontSize, y) => {
         const words = text.split(/\s+/).filter(Boolean).slice(0, 8).map((t) => ({ t, s: 0, e: 0 }));
         return this.layout({ w: words }, { fontSize, widthFactor: 0.7 }).map((entry) => {
-          const mesh = this.factory.make(entry.text, this.constructor.textColor, this.constructor.textStyle);
+          const { textColor, textStyle, glowLimit, baseGlow } = this.constructor;
+          const mesh = this.factory.make(entry.text, textColor, textStyle, glowLimit, baseGlow);
           mesh.object.scale.setScalar(entry.size);
           mesh.object.position.set(entry.home.x, entry.home.y + y, TITLE_Z);
           group.add(mesh.object);
           return mesh;
         });
       };
-      const meshes = [...make(info.title, 0.75, TITLE_Y), ...make(info.artist, 0.4, TITLE_Y - 1.0)];
+      const meshes = [...make(info.title, 0.75, 0), ...make(info.artist, 0.4, -1.0)];
       this.root.add(group);
       this.title = { trackID, group, meshes, opacity: 0, fading: false };
     }
     if (!this.title) return;
+    this.title.group.position.y = -this.stage.viewSize(CAMERA_Z - TITLE_Z).height / 2 + TITLE_MARGIN;
     this.title.opacity = damp(this.title.opacity, this.title.fading ? 0 : 1, 3, dt);
-    this.title.meshes.forEach((mesh) => mesh.setOpacity(this.title.opacity * this.vizAmount));
+    this.title.meshes.forEach((mesh) => {
+      mesh.setTint(this.colors.lyric, this.colors.highlight);
+      mesh.setOpacity(this.title.opacity * this.vizAmount);
+    });
     if (this.title.fading && this.title.opacity < 0.01) {
       this.title.meshes.forEach((mesh) => mesh.dispose());
       this.title.group.removeFromParent();
@@ -257,6 +342,9 @@ export class KineticDepth extends LineTheme {
   }
 
   deactivate() {
+    this.chrome?.dispose();
+    this.grain?.dispose();
+    this.chromeTextures?.dispose();
     this.title?.meshes.forEach((mesh) => mesh.dispose());
     this.title = null;
     super.deactivate();
@@ -264,9 +352,22 @@ export class KineticDepth extends LineTheme {
 
   // MARK: Lines
 
+  /** Poster-style placement like the 2D themes: left, centred or right from line to line, fitted to the window. */
+  #compose(line, index) {
+    const texts = line.w.map((w) => this.factory.display(w.t));
+    const kind = ['center', 'left', 'center', 'right'][index % 4];
+    const layout = composeLine(texts.map((t) => this.measure(t)), this.stage.viewSize(CAMERA_Z), kind, { maxSize: MAX_WORD_SIZE });
+    return texts.map((text, i) => ({
+      text,
+      word: line.w[i],
+      size: layout.size,
+      home: new THREE.Vector3(layout.words[i].x, layout.words[i].y - layout.size * CAP_OFFSET, 0),
+    }));
+  }
+
   createLine(deck, line, index, frame) {
     const view = this.newView('line', line, index, frame);
-    this.addWords(view, this.layout(line, { fontSize: 1.25 })).forEach((item) => {
+    this.addWords(view, this.#compose(line, index)).forEach((item) => {
       const r = (k) => seeded(index * 97 + item.i * 13 + k);
       item.start = new THREE.Vector3(item.home.x * 3 + (r(1) - 0.5) * 16, item.home.y * 3 + (r(2) - 0.5) * 10, -70 - r(3) * 50);
       item.spin = r(4) > 0.5 ? 1 : -1;
@@ -281,7 +382,8 @@ export class KineticDepth extends LineTheme {
     view.items.forEach((item) => {
       const launch = Math.max(view.line.s, item.word.s - FLIGHT);
       const arrive = Math.max(item.word.s, launch + MIN_FLIGHT);
-      const t = clamp01((pos - launch) / (arrive - launch));
+      // Eased so a word re-timed to the singer mid-flight doesn't skip.
+      const t = this.smooth(item, 'flight', clamp01((pos - launch) / (arrive - launch)), dt, 30);
       const e = easeOutCubic(t);
       const object = item.object;
 
@@ -294,16 +396,23 @@ export class KineticDepth extends LineTheme {
         lerp(item.start.y, item.home.y, e) + Math.sin(now * 2.4 + item.i) * 0.06 * land,
         lerp(item.start.z, item.home.z, easeOutBack(t, 2.4)) + depth,
       );
-      object.rotation.set((1 - e) * 0.7 * item.spin, (1 - e) * Math.PI * 1.6 * item.spin, 0);
+      // Spin settles well before landing, so a landing word never swings into its neighbours.
+      const turn = (1 - e) ** 2;
+      object.rotation.set(turn * 0.7 * item.spin, turn * Math.PI * 1.6 * item.spin, 0);
 
       // Springy landing squash; the sung word swells a little.
       const squash = Math.sin(land * Math.PI) * (1 - land) * 0.45;
-      const swell = this.smooth(item, 'swell', phase.state === 'singing' ? 0.08 + pulse * 0.03 : 0, dt, 10);
+      const swell = this.smooth(item, 'swell', phase.state === 'singing' ? 0.05 + pulse * 0.02 : 0, dt, 10);
       object.scale.set(1 + squash + swell, 1 - squash * 0.6 + swell, 1 + squash).multiplyScalar(item.size);
 
+      // Album-art colours: tinted chrome, and the word being sung glows in the highlight colour.
+      item.mesh.setTint(this.colors.lyric, this.colors.highlight);
       const glow = phase.state === 'singing' ? 1.7 - phase.t * 0.5 : phase.state === 'done' ? 0.3 : 0;
       item.mesh.setGlow(this.smooth(item, 'glow', glow, dt, 12));
-      item.mesh.setOpacity(clamp01(t * 3) * this.smooth(item, 'dim', phase.state === 'done' ? 0.72 : 1, dt, 6) * deck.opacity);
+      const rest = phase.state === 'singing' ? 1 : phase.state === 'done' ? SUNG_OPACITY : WAITING_OPACITY;
+      // Flying in at full strength, then settling to the waiting level until the word is sung.
+      const level = lerp(1, rest, land);
+      item.mesh.setOpacity(clamp01(t * 3) * this.smooth(item, 'dim', level, dt, 8) * deck.opacity);
 
       if (t >= 1) this.popOnce(item, phase);
     });
@@ -315,10 +424,11 @@ export class KineticDepth extends LineTheme {
       const k = clamp01((age - item.i * STAGGER) / EXIT);
       const e = easeInCubic(k);
       // Immediate push toward the camera (clears the incoming line), then accelerate past it.
-      const push = k * 9 + e * 30;
+      const push = k * 6 + e * 16;
       item.object.position.set(item.exitFrom.x * (1 + e * 1.4), item.exitFrom.y + 1.2 * k + e * 2, item.exitFrom.z + push);
       item.object.rotation.z = e * item.spin * 0.9;
-      item.mesh.setOpacity((1 - smoothstep(0.05, 0.55, k)) * deck.opacity);
+      // Gone before it gets close enough to fill the screen.
+      item.mesh.setOpacity((1 - smoothstep(0.02, 0.32, k)) * deck.opacity);
     });
     return age < EXIT + view.items.length * STAGGER + 0.05;
   }
@@ -365,7 +475,7 @@ export class KineticDepth extends LineTheme {
     );
     sticker.object.rotation.set(0, (1 - e) * Math.PI * 1.2 * sticker.spin, Math.sin(now * 1.1 + sticker.slot * 2) * 0.08 * land);
     const squash = Math.sin(land * Math.PI) * (1 - land) * 0.25;
-    sticker.object.scale.set(1 + squash, 1 - squash * 0.6, 1);
+    sticker.object.scale.set(1 + squash, 1 - squash * 0.6, 1).multiplyScalar(this.stickerScale());
     sticker.material.opacity = clamp01(t * 2.5) * deck.opacity;
   }
 

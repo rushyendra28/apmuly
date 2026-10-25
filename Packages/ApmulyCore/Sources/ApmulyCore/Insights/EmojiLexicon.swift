@@ -158,7 +158,7 @@ public enum EmojiLexicon {
     }
 
     /// The word itself, then simple singular forms (cities → city, boxes → box, roses → rose).
-    private static func candidates(_ key: String) -> [String] {
+    static func candidates(_ key: String) -> [String] {
         var forms = [key]
         if key.hasSuffix("ies"), key.count > 4 { forms.append(String(key.dropLast(3)) + "y") }
         if key.hasSuffix("es"), key.count > 3 { forms.append(String(key.dropLast(2))) }

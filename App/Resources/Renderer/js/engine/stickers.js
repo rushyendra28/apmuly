@@ -1,6 +1,6 @@
 import * as THREE from '../../vendor/three.module.min.js';
 
-const EMOJI_PX = 128;
+const EMOJI_PX = 160;
 const EMOJI_SIZE = 1.5;
 /** Extra room around the glyph so no emoji is ever clipped by its texture edge. */
 const PADDING = 1.45;
@@ -39,6 +39,11 @@ export class StickerFactory {
     };
   }
 
+  /** Shared texture of an emoji (for themes that build their own meshes). */
+  texture(emoji) {
+    return this.#texture(emoji);
+  }
+
   /** The emoji itself, or its first character if this system draws the sequence in pieces. */
   displayable(emoji) {
     const width = this.measure.measureText(emoji).width;
@@ -67,6 +72,7 @@ export class StickerFactory {
 
     const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;
+    texture.anisotropy = 8;
     this.textures.set(emoji, texture);
     return texture;
   }

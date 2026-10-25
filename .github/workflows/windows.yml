@@ -1,0 +1,107 @@
+name: Windows
+
+on:
+  push:
+    branches: [main, 'windows/**']
+    tags: ['v*']
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
+jobs:
+  build:
+    name: Test and package (Windows)
+    runs-on: windows-latest
+    permissions:
+      contents: write # attach zips to the release on v* tags
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Read version
+        id: version
+        run: |
+          [xml]$props = Get-Content windows/Directory.Build.props
+          $version = ($props.Project.PropertyGroup | Where-Object { $_.Version } | Select-Object -First 1).Version
+          if ("${{ github.ref_type }}" -eq "tag") { $version = "${{ github.ref_name }}".TrimStart("v") }
+          if (-not $version) { throw "No version found" }
+          "value=$version" >> $env:GITHUB_OUTPUT
+          Write-Host "Version $version"
+
+      - name: Test core
+        run: dotnet test windows/tests/Apmuly.Core.Tests -c Release --logger "trx;LogFileName=core-tests.trx" --results-directory TestResults
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: TestResults/*.trx
+          if-no-files-found: ignore
+
+      - name: Publish x64
+        run: dotnet publish windows/src/Apmuly.Windows -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -o publish/x64
+
+      - name: Publish arm64
+        run: dotnet publish windows/src/Apmuly.Windows -c Release -r win-arm64 --self-contained true -p:PublishSingleFile=false -o publish/arm64
+
+      - name: Check package contents
+        run: |
+          foreach ($arch in "x64", "arm64") {
+            foreach ($file in "Apmuly.exe", "WebView2Loader.dll", "Renderer/index.html", "Renderer/js/main.js") {
+              if (-not (Test-Path "publish/$arch/$file")) { throw "publish/$arch is missing $file" }
+            }
+          }
+
+      - name: Zip
+        run: |
+          $version = "${{ steps.version.outputs.value }}"
+          New-Item -ItemType Directory -Force dist | Out-Null
+          foreach ($arch in "x64", "arm64") {
+            Get-ChildItem "publish/$arch" -Filter *.pdb -Recurse | Remove-Item
+            Compress-Archive -Path "publish/$arch/*" -DestinationPath "dist/Apmuly-Windows-$version-$arch.zip" -CompressionLevel Optimal
+          }
+          Get-ChildItem dist | ForEach-Object {
+            $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  $($_.Name)" | Add-Content dist/SHA256SUMS-windows.txt
+          }
+          Get-Content dist/SHA256SUMS-windows.txt
+
+      - name: Upload x64
+        uses: actions/upload-artifact@v4
+        with:
+          name: Apmuly-Windows-${{ steps.version.outputs.value }}-x64
+          path: dist/Apmuly-Windows-${{ steps.version.outputs.value }}-x64.zip
+          if-no-files-found: error
+
+      - name: Upload arm64
+        uses: actions/upload-artifact@v4
+        with:
+          name: Apmuly-Windows-${{ steps.version.outputs.value }}-arm64
+          path: dist/Apmuly-Windows-${{ steps.version.outputs.value }}-arm64.zip
+          if-no-files-found: error
+
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/Apmuly-Windows-${{ steps.version.outputs.value }}-x64.zip
+            dist/Apmuly-Windows-${{ steps.version.outputs.value }}-arm64.zip
+            dist/SHA256SUMS-windows.txt

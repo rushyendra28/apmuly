@@ -32,11 +32,12 @@ export function studioEnvironment(renderer) {
   });
 
   const pmrem = new THREE.PMREMGenerator(renderer);
-  const texture = pmrem.fromScene(scene, 0.03).texture;
+  // The render target owns the texture; disposing it frees the framebuffer too.
+  const target = pmrem.fromScene(scene, 0.03);
   pmrem.dispose();
   dome.geometry.dispose();
   dome.material.dispose();
   panel.dispose();
   white.dispose();
-  return texture;
+  return target;
 }

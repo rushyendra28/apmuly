@@ -2,45 +2,46 @@ import AppKit
 import SwiftUI
 import WebKit
 
-/// Root view. Visualizer mode: 3D themed lyrics. Lyrics mode: a readable lyrics sheet over the
-/// theme's dimmed 3D scene. If the renderer can't start, the lyrics sheet is shown on its own.
+/// Root view. Visualizer mode: 3D themed lyrics. Lyrics mode: the stage's own lyrics sheet over its
+/// dimmed scene (singer-paced, in the song's colours). If the renderer can't start, a native lyrics
+/// sheet is shown on its own.
 struct StageView: View {
     @ObservedObject var model: NowPlayingModel
     @ObservedObject var renderer: RendererBridge
+    @StateObject private var activity = ActivityMonitor()
     @State private var keys = KeyMonitor()
 
-    private var showsSheet: Bool { renderer.mode == .lyrics || renderer.failure != nil }
-
-    /// Dim the 3D scene behind the sheet only when there are lyrics to read.
-    private var sheetDim: Double {
-        guard renderer.failure == nil else { return 0 }
-        if case .loaded(.lyrics) = model.currentLyrics { return 0.5 }
-        return 0.1
-    }
+    private var rendererFailed: Bool { renderer.failure != nil }
 
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            if renderer.failure == nil {
+            if !rendererFailed {
                 RendererView(bridge: renderer).ignoresSafeArea()
             }
-            if showsSheet {
-                Color.black.opacity(sheetDim).ignoresSafeArea()
-                LyricsMachineView(model: model, showsNoLyricsCaption: renderer.failure != nil)
+            if rendererFailed {
+                LyricsMachineView(model: model, showsNoLyricsCaption: true)
             } else {
-                CurrentStatusOverlay(model: model, showsNoLyricsCaption: false)
+                // Status text and untimed lyrics; songs without lyrics become a visualizer instead.
+                CurrentStatusOverlay(model: model, showsNoLyricsCaption: renderer.mode == .lyrics)
             }
         }
-        .animation(.easeInOut(duration: 0.35), value: showsSheet)
-        .overlay(StatusBar(model: model, mode: renderer.mode), alignment: .bottom)
+        .overlay(StatusBar(model: model, mode: renderer.mode, theme: renderer.theme, livePacing: renderer.livePacing)
+            .opacity(activity.isActive ? 1 : 0)
+            .animation(.easeInOut(duration: 0.4), value: activity.isActive), alignment: .bottom)
         .overlay(PermissionPrompt(error: model.bridgeError))
         .task {
             model.start()
             renderer.start()
-            keys.start { handleKey($0) }
+            activity.start()
+            keys.start { key in
+                activity.touch()
+                return handleKey(key)
+            }
         }
         .onDisappear {
             keys.stop()
+            activity.stop()
             model.stop()
             renderer.stop()
         }
@@ -53,10 +54,48 @@ struct StageView: View {
         case "0": model.resetOffset()
         case "r", "R": model.retryLyrics()
         case "l", "L": renderer.select(renderer.mode.toggled)
+        case "t", "T": renderer.select(renderer.theme.next)
+        case "p", "P": renderer.toggleLivePacing()
         default:
-            return false
+            guard let theme = StageTheme.allCases.first(where: { String($0.shortcut) == characters }) else { return false }
+            renderer.select(theme)
         }
         return true
+    }
+}
+
+/// Shows the status bar while the mouse moves or keys are pressed, then fades it away.
+@MainActor
+final class ActivityMonitor: ObservableObject {
+    @Published private(set) var isActive = true
+    private static let idleDelay: TimeInterval = 3
+    private var token: Any?
+    private var hideTask: Task<Void, Never>?
+
+    func start() {
+        guard token == nil else { return }
+        NSApp.windows.forEach { $0.acceptsMouseMovedEvents = true }
+        token = NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved, .leftMouseDown, .scrollWheel]) { [weak self] event in
+            MainActor.assumeIsolated { self?.touch() }
+            return event
+        }
+        touch()
+    }
+
+    func touch() {
+        if !isActive { isActive = true }
+        hideTask?.cancel()
+        hideTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(Self.idleDelay * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+            self?.isActive = false
+        }
+    }
+
+    func stop() {
+        if let token { NSEvent.removeMonitor(token) }
+        token = nil
+        hideTask?.cancel()
     }
 }
 

@@ -139,3 +139,39 @@ struct EmojiCompatibilityTests {
         }
     }
 }
+
+@Suite("Singing weights")
+struct SingingWeightTests {
+    private func durations(_ text: String, _ start: Double = 0, _ end: Double = 10) -> [Double] {
+        WordTimingEstimator.estimate(text: text, start: start, end: end).map { $0.end - $0.start }
+    }
+
+    @Test("The last word of a line is held longer than the same word mid-line")
+    func phraseFinalHold() {
+        let d = durations("glow glow glow")
+        #expect(d[2] > d[0] * 1.3)
+        #expect(abs(d[0] - d[1]) < 0.0001)
+    }
+
+    @Test("Short filler words go by quicker than content words")
+    func fillerWordsAreQuick() {
+        let d = durations("the spark and glow")
+        #expect(d[0] < d[1])
+        #expect(d[2] < d[3])
+    }
+
+    @Test("A comma inside a line lengthens the word before it")
+    func commaPause() {
+        let d = durations("spark, glow spark")
+        let plain = durations("spark glow spark")
+        #expect(d[0] > plain[0])
+    }
+
+    @Test("Weights stay positive and the line is still fully covered")
+    func coverage() {
+        let words = WordTimingEstimator.estimate(text: "a the of to", start: 5, end: 6)
+        #expect(words.allSatisfy { $0.end > $0.start })
+        #expect(abs((words.last?.end ?? 0) - 6) < 0.0001)
+        #expect(WordTimingEstimator.weights(for: ["a", "glow"]).allSatisfy { $0 > 0 })
+    }
+}

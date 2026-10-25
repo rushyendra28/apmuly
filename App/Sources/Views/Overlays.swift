@@ -44,10 +44,11 @@ private struct Caption: View {
         VStack {
             Text(text)
                 .font(.system(size: 14, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.85))
+                .foregroundStyle(.white.opacity(0.9))
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8)
-                .background(.black.opacity(0.35), in: Capsule())
+                .background(.ultraThinMaterial, in: Capsule())
+                .environment(\.colorScheme, .dark)
                 .padding(.top, 36)
             Spacer()
         }
@@ -97,6 +98,8 @@ struct UnsyncedView: View {
 struct StatusBar: View {
     @ObservedObject var model: NowPlayingModel
     let mode: StageMode
+    let theme: StageTheme
+    let livePacing: Bool
 
     /// Below this, output latency isn't worth mentioning (built-in speakers).
     private static let notableLatency: TimeInterval = 0.04
@@ -107,15 +110,18 @@ struct StatusBar: View {
                 Text("\(track.title) — \(track.artist)").lineLimit(1)
             }
             Spacer()
-            Text(mode.title)
+            Text(mode == .lyrics ? mode.title : theme.title)
             Text(syncLabel).monospacedDigit()
-            Text("L lyrics / visualizer · [ ] nudge · 0 reset").foregroundStyle(.white.opacity(0.45))
+            Text("L lyrics · 1–\(StageTheme.allCases.count) or T theme · P live pacing · [ ] nudge · 0 reset").foregroundStyle(.white.opacity(0.5))
         }
-        .font(.system(size: 12, design: .rounded))
-        .foregroundStyle(.white.opacity(0.7))
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .background(LinearGradient(colors: [.clear, .black.opacity(0.5)], startPoint: .top, endPoint: .bottom))
+        .font(.system(size: 12, weight: .medium, design: .rounded))
+        .foregroundStyle(.white.opacity(0.8))
+        .padding(.horizontal, 16)
+        .padding(.vertical, 9)
+        .background(.ultraThinMaterial, in: Capsule())
+        .environment(\.colorScheme, .dark)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 14)
     }
 
     /// How timing is being corrected for the current song.
@@ -134,6 +140,7 @@ struct StatusBar: View {
         if nudge != 0 {
             parts.append(String(format: "nudge %+.2fs", nudge))
         }
+        if !livePacing { parts.append("live pacing off") }
         return parts.isEmpty ? "in sync" : parts.joined(separator: " · ")
     }
 }

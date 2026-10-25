@@ -40,6 +40,8 @@ final class NowPlayingModel: ObservableObject {
     @Published private(set) var offsets: [String: TimeInterval] = [:]
     /// Small JPEG data URLs of each track's artwork.
     private(set) var artworkURLs: [String: String] = [:]
+    /// Each track's colours from its artwork (themes use a neutral palette until/unless one arrives).
+    @Published private(set) var palettes: [String: ThemePalette] = [:]
     /// Emotion emoji and object emoji per line, per track (grows as analysis progresses).
     private(set) var insights: [String: [Int: LineInsight]] = [:]
     /// Bumped whenever a track's insights change, so the renderer knows to resend.
@@ -335,12 +337,15 @@ final class NowPlayingModel: ObservableObject {
                   let data = artwork.data
             else { return }
             let maxPixel = Self.artworkMaxPixel
-            let url = await Task.detached(priority: .utility) { ImageProcessor.dataURL(from: data, maxPixel: maxPixel) }.value
+            let (url, palette) = await Task.detached(priority: .utility) {
+                (ImageProcessor.dataURL(from: data, maxPixel: maxPixel), ImageProcessor.palette(from: data))
+            }.value
             guard let url else {
                 Self.logger.error("Could not decode artwork for \(trackID, privacy: .public)")
                 return
             }
             artworkURLs[trackID] = url
+            palettes[trackID] = palette
         }
     }
 

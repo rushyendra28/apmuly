@@ -1,7 +1,7 @@
-import * as THREE from 'three';
-import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import * as THREE from '../../vendor/three.module.min.js';
+import { EffectComposer } from '../../vendor/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from '../../vendor/addons/postprocessing/RenderPass.js';
+import { OutputPass } from '../../vendor/addons/postprocessing/OutputPass.js';
 
 export const CAMERA_Z = 16;
 

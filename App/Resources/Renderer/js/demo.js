@@ -4,7 +4,7 @@
 
 const WORDS = ['neon', 'candy', 'bounce', 'glow', 'pop', 'wave', 'spark', 'drift',
   'jelly', 'orbit', 'fizz', 'zoom', 'shine', 'twist', 'burst', 'float'];
-const OBJECT_EMOJI = { candy: '🍬', wave: '🌊', orbit: '🪐', spark: '✨', jelly: '🪼' };
+const OBJECT_EMOJI = { candy: '🍬', wave: '🌊', orbit: '🪐', spark: '✨', jelly: '🐙' };
 const MOODS = ['😄', '🥳', '😎', '🥺'];
 const LINE_SECONDS = 3.2;
 const BEAT_SECONDS = 0.5;

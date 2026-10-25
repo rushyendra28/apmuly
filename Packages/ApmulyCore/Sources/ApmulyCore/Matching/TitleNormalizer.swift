@@ -4,21 +4,19 @@ import Foundation
 public enum TitleNormalizer {
     /// Drops featured-artist and remaster suffixes; keeps remix/version info (different timing).
     public static func searchTitle(_ title: String) -> String {
-        let featuring = /\s*[\(\[](?:feat\.?|ft\.?|featuring|with)\s[^\)\]]*[\)\]]/.ignoresCase()
-        let bracketedRemaster = /\s*[\(\[][^\)\]]*remaster[^\)\]]*[\)\]]/.ignoresCase()
-        let dashRemaster = /\s+-\s+.*remaster.*$/.ignoresCase()
-        return title
-            .replacing(featuring, with: "")
-            .replacing(bracketedRemaster, with: "")
-            .replacing(dashRemaster, with: "")
+        let featuring = Patterns.regex(#"\s*[\(\[](?:feat\.?|ft\.?|featuring|with)\s[^\)\]]*[\)\]]"#, caseInsensitive: true)
+        let bracketedRemaster = Patterns.regex(#"\s*[\(\[][^\)\]]*remaster[^\)\]]*[\)\]]"#, caseInsensitive: true)
+        let dashRemaster = Patterns.regex(#"\s+-\s+.*remaster.*$"#, caseInsensitive: true)
+        return [featuring, bracketedRemaster, dashRemaster]
+            .reduce(title) { Patterns.replacing($1, in: $0) }
             .trimmingCharacters(in: .whitespaces)
     }
 
     /// First credited artist: "A & B", "A, B", "A feat. B", "A x B" → "A".
     public static func primaryArtist(_ artist: String) -> String {
-        let separator = /\s+(?:&|feat\.?|ft\.?|x|with)\s+|\s*,\s*/.ignoresCase()
-        guard let match = artist.firstMatch(of: separator) else { return artist }
-        let primary = artist[..<match.range.lowerBound].trimmingCharacters(in: .whitespaces)
+        let separator = Patterns.regex(#"\s+(?:&|feat\.?|ft\.?|x|with)\s+|\s*,\s*"#, caseInsensitive: true)
+        guard let match = Patterns.firstRange(separator, in: artist) else { return artist }
+        let primary = artist[..<match.lowerBound].trimmingCharacters(in: .whitespaces)
         return primary.isEmpty ? artist : primary
     }
 

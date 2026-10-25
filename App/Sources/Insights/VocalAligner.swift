@@ -5,15 +5,11 @@ import NaturalLanguage
 import os
 import Speech
 
-/// A word recognised in Music's audio and when it played (systemUptime seconds).
-struct HeardAudioWord: Sendable {
-    let text: String
-    let hostTime: TimeInterval
-}
-
-/// Listens to Music's audio with Apple's on-device speech recognition so recognised sung words can
-/// be lined up with the lyric file. Audio and transcripts never leave the Mac and are never logged.
-actor VocalAligner {
+/// Listens to Music's audio with Apple's on-device speech recognition (SpeechAnalyzer, macOS 26)
+/// so recognised sung words can be lined up with the lyric file. Audio and transcripts never leave
+/// the Mac and are never logged.
+@available(macOS 26.0, *)
+actor VocalAligner: VocalListening {
     private static let logger = Logger(subsystem: "io.github.rushyendra28.apmuly", category: "vocal-aligner")
     private static let timescale: CMTimeScale = 48_000
 
@@ -56,7 +52,7 @@ actor VocalAligner {
 
             let (words, output) = AsyncStream<HeardAudioWord>.makeStream()
             resultsTask = Task { await self.forward(transcriber, to: output) }
-            Self.logger.info("Listening for auto-sync (\(locale.identifier(.bcp47), privacy: .public))")
+            Self.logger.info("Listening for auto-sync (\(locale.identifier, privacy: .public))")
             return words
         } catch {
             Self.logger.error("Auto-sync could not start: \(String(describing: type(of: error)), privacy: .public)")

@@ -5,7 +5,7 @@ import SwiftUI
 /// Native text over the 3D stage for anything the renderer doesn't draw:
 /// loading / not found / instrumental states, and untimed lyrics.
 struct CurrentStatusOverlay: View {
-    let model: NowPlayingModel
+    @ObservedObject var model: NowPlayingModel
     /// False while the 3D stage is running: songs without lyrics become a titled visualizer instead.
     var showsNoLyricsCaption = true
 
@@ -95,7 +95,7 @@ struct UnsyncedView: View {
 }
 
 struct StatusBar: View {
-    let model: NowPlayingModel
+    @ObservedObject var model: NowPlayingModel
     let mode: StageMode
 
     /// Below this, output latency isn't worth mentioning (built-in speakers).

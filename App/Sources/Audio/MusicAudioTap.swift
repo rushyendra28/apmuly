@@ -71,8 +71,17 @@ final class MusicAudioTap: @unchecked Sendable {
         stop()
     }
 
+    /// Runs `body` holding the lock (NSLock.withLock needs macOS 13).
+    private func locked<T>(_ body: () -> T) -> T {
+        lock.lock()
+        defer { lock.unlock() }
+        return body()
+    }
+
     /// Starts, restarts (Music relaunched) or stops the tap as needed. Cheap to call often.
     func ensureRunning() {
+        // Core Audio process taps arrived in macOS 14.2; earlier systems run without Music's audio.
+        guard #available(macOS 14.2, *) else { return }
         guard Date().timeIntervalSince(lastCheck) >= Self.checkInterval else { return }
         lastCheck = Date()
         let pid = NSRunningApplication.runningApplications(withBundleIdentifier: MusicBridge.bundleID).first?.processIdentifier
@@ -147,7 +156,7 @@ final class MusicAudioTap: @unchecked Sendable {
 
     /// Turns raw-sample collection (for the vocal aligner) on or off.
     func setCollecting(_ on: Bool) {
-        lock.withLock {
+        locked {
             collecting = on
             pending.removeAll(keepingCapacity: on)
             pendingHostTime = nil
@@ -173,7 +182,7 @@ final class MusicAudioTap: @unchecked Sendable {
             }
             AudioHardwareDestroyAggregateDevice(aggregateID)
         }
-        if tapID != kAudioObjectUnknown {
+        if tapID != kAudioObjectUnknown, #available(macOS 14.2, *) {
             AudioHardwareDestroyProcessTap(tapID)
         }
         procID = nil
@@ -194,6 +203,7 @@ final class MusicAudioTap: @unchecked Sendable {
         if status != noErr { throw TapError(step: step, status: status) }
     }
 
+    @available(macOS 14.2, *)
     private func start(pid: pid_t) throws {
         let processObject = try Self.audioObject(for: pid)
         let outputUID = try Self.defaultOutputUID()
@@ -209,7 +219,7 @@ final class MusicAudioTap: @unchecked Sendable {
         var address = Self.address(kAudioTapPropertyFormat)
         try check(AudioObjectGetPropertyData(tapID, &address, 0, nil, &size, &format), "read tap format")
         let sampleRate = format.mSampleRate > 0 ? format.mSampleRate : 48_000
-        lock.withLock {
+        locked {
             alpha = 1 - exp(-2 * .pi * Self.bassCutoffHz / sampleRate)
             self.sampleRate = sampleRate
         }
@@ -281,6 +291,7 @@ final class MusicAudioTap: @unchecked Sendable {
                                    mElement: kAudioObjectPropertyElementMain)
     }
 
+    @available(macOS 14.2, *)
     private static func audioObject(for pid: pid_t) throws -> AudioObjectID {
         var pid = pid
         var object = AudioObjectID(kAudioObjectUnknown)

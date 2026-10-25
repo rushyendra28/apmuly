@@ -37,3 +37,15 @@ export function gapState(lines, index, pos) {
   const span = end - line.s;
   return { inGap: true, progress: span > 0 ? clamp01((pos - line.s) / span) : 1, untilNext: end - pos };
 }
+
+/**
+ * When the app re-times a song to the singer's pace, the line on screen should switch to the new
+ * word timings. Returns the document's version of the line at `index` if it's the same line with
+ * new timing, else null (unchanged, missing, or a different line).
+ */
+export function retimedLine(shown, doc, index) {
+  const latest = doc?.lines?.[index];
+  if (!latest || latest === shown) return null;
+  if (latest.t !== shown.t || latest.w.length !== shown.w.length) return null;
+  return latest;
+}

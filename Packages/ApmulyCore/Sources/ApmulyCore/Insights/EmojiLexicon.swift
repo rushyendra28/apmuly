@@ -1,6 +1,7 @@
 import Foundation
 
 /// Emoji for emotions, actions, and concrete things commonly mentioned in songs.
+/// Only Unicode 13.0 or earlier and no joined (ZWJ) sequences, so every emoji displays on macOS 12.
 public enum EmojiLexicon {
     private static let emotions: [Emotion: [String]] = [
         .joy: ["😄", "😁", "🤩", "😊", "🌞"],
@@ -9,10 +10,10 @@ public enum EmojiLexicon {
         .anger: ["😠", "😤", "💢", "🤬", "🔥"],
         .excitement: ["🥳", "🎉", "🤘", "🔥", "⚡"],
         .calm: ["😌", "🌿", "☁️", "🍃", "🌊"],
-        .fear: ["😨", "😱", "👀", "😰", "🫣"],
+        .fear: ["😨", "😱", "👀", "😰", "🙈"],
         .confidence: ["😎", "💪", "👑", "💯", "🏆"],
         .heartbreak: ["💔", "😞", "🥀", "😿", "🖤"],
-        .longing: ["🥺", "💭", "🫶", "🌙", "⏳"],
+        .longing: ["🥺", "💭", "💞", "🌙", "⏳"],
     ]
 
     /// Verbs and their common forms. Shown as emoji only (no photos).
@@ -47,28 +48,28 @@ public enum EmojiLexicon {
         "bird": "🐦", "butterfly": "🦋", "dog": "🐶", "puppy": "🐶", "cat": "🐱", "kitten": "🐱",
         "lion": "🦁", "wolf": "🐺", "snake": "🐍", "horse": "🐴", "fish": "🐟", "shark": "🦈",
         "tiger": "🐯", "bee": "🐝", "bear": "🐻", "monkey": "🐒", "owl": "🦉", "eagle": "🦅",
-        "dove": "🕊️", "crow": "🐦‍⬛", "raven": "🐦‍⬛", "spider": "🕷️", "dragon": "🐉", "unicorn": "🦄",
+        "dove": "🕊️", "crow": "🐦", "raven": "🐦", "spider": "🕷️", "dragon": "🐉", "unicorn": "🦄",
         "rabbit": "🐰", "bunny": "🐰", "fox": "🦊", "deer": "🦌", "whale": "🐳", "dolphin": "🐬",
         "octopus": "🐙", "frog": "🐸", "pig": "🐷", "cow": "🐮", "chicken": "🐔", "duck": "🦆",
         "goat": "🐐", "sheep": "🐑", "mouse": "🐭", "rat": "🐀", "bat": "🦇", "turtle": "🐢",
         "penguin": "🐧", "elephant": "🐘", "zebra": "🦓", "giraffe": "🦒", "panda": "🐼", "parrot": "🦜",
-        "flamingo": "🦩", "peacock": "🦚", "swan": "🦢", "jellyfish": "🪼", "crab": "🦀", "scorpion": "🦂",
-        "dinosaur": "🦖", "phoenix": "🐦‍🔥",
+        "flamingo": "🦩", "peacock": "🦚", "swan": "🦢", "jellyfish": "🐙", "crab": "🦀", "scorpion": "🦂",
+        "dinosaur": "🦖", "phoenix": "🔥",
         // People & body
         "heart": "❤️", "eye": "👁️", "hand": "✋", "lip": "👄", "mouth": "👄", "nose": "👃", "ear": "👂",
         "tongue": "👅", "brain": "🧠", "bone": "🦴", "blood": "🩸", "fist": "✊", "finger": "☝️",
         "foot": "🦶", "leg": "🦵", "arm": "💪", "muscle": "💪", "crown": "👑", "angel": "😇", "devil": "😈",
         "ghost": "👻", "skull": "💀", "king": "🤴", "queen": "👸", "prince": "🤴", "princess": "👸",
         "baby": "👶", "tear": "💧", "teardrop": "💧", "zombie": "🧟", "vampire": "🧛", "witch": "🧙",
-        "alien": "👽", "robot": "🤖", "clown": "🤡", "ninja": "🥷", "pirate": "🏴‍☠️", "cowboy": "🤠",
-        "astronaut": "🧑‍🚀", "superhero": "🦸", "mermaid": "🧜", "fairy": "🧚",
+        "alien": "👽", "robot": "🤖", "clown": "🤡", "ninja": "🥷", "pirate": "☠️", "cowboy": "🤠",
+        "astronaut": "🚀", "superhero": "🦸", "mermaid": "🧜", "fairy": "🧚",
         // Vehicles & places
         "car": "🚗", "plane": "✈️", "jet": "✈️", "train": "🚆", "boat": "⛵", "ship": "🚢", "bike": "🚲",
         "rocket": "🚀", "truck": "🚚", "bus": "🚌", "taxi": "🚕", "motorcycle": "🏍️", "helicopter": "🚁",
         "subway": "🚇", "spaceship": "🛸", "ufo": "🛸", "road": "🛣️", "highway": "🛣️", "street": "🛣️",
         "bridge": "🌉", "city": "🏙️", "town": "🏘️", "house": "🏠", "home": "🏡", "door": "🚪",
         "window": "🪟", "bed": "🛏️", "room": "🛋️", "couch": "🛋️", "kitchen": "🍳", "school": "🏫",
-        "church": "⛪", "hospital": "🏥", "club": "🪩", "bar": "🍸", "hotel": "🏨", "castle": "🏰",
+        "church": "⛪", "hospital": "🏥", "club": "🕺", "bar": "🍸", "hotel": "🏨", "castle": "🏰",
         "park": "🏞️", "airport": "🛫", "pool": "🏊", "stage": "🎭", "studio": "🎙️", "tower": "🗼",
         "prison": "⛓️", "jail": "⛓️", "farm": "🚜", "tent": "⛺", "factory": "🏭", "office": "🏢",
         "bank": "🏦", "stadium": "🏟️", "temple": "🛕", "palace": "🏰", "skyscraper": "🏙️",
@@ -105,7 +106,7 @@ public enum EmojiLexicon {
         "ticket": "🎟️", "map": "🗺️", "compass": "🧭", "smoke": "💨", "flag": "🚩", "trophy": "🏆",
         "medal": "🏅", "pill": "💊", "medicine": "💊", "cigarette": "🚬", "telescope": "🔭",
         "crystal": "🔮", "magnet": "🧲", "candlelight": "🕯️", "firework": "🎆", "fireworks": "🎆",
-        "confetti": "🎊", "disco": "🪩", "spotlight": "🔦", "flashlight": "🔦", "tattoo": "🖋️",
+        "confetti": "🎊", "disco": "🕺", "spotlight": "🔦", "flashlight": "🔦", "tattoo": "🖋️",
         "pillow": "🛏️", "blanket": "🛌", "chair": "🪑", "table": "🍽️", "glass": "🥂", "cup": "☕",
         "plate": "🍽️", "box": "📦", "photo": "🖼️", "picture": "🖼️", "painting": "🖼️", "statue": "🗽",
     ]
@@ -118,6 +119,11 @@ public enum EmojiLexicon {
     ]
 
     public static var objectCount: Int { objects.count }
+
+    /// Every emoji Apmuly can show (for compatibility checks).
+    static var allEmoji: [String] {
+        Array(Set(emotions.values.flatMap { $0 } + actions.values + objects.values)).sorted()
+    }
     public static var actionCount: Int { actions.count }
 
     public static func emoji(for emotion: Emotion, variant: Int) -> String? {

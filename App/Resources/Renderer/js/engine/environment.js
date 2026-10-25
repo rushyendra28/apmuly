@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import * as THREE from '../../vendor/three.module.min.js';
 
 /**
  * A soft "photo studio" reflection environment (gradient dome + light panels), so chrome,

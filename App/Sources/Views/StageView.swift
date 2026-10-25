@@ -1,12 +1,13 @@
+import AppKit
 import SwiftUI
 import WebKit
 
 /// Root view. Visualizer mode: 3D themed lyrics. Lyrics mode: a readable lyrics sheet over the
 /// theme's dimmed 3D scene. If the renderer can't start, the lyrics sheet is shown on its own.
 struct StageView: View {
-    let model: NowPlayingModel
-    let renderer: RendererBridge
-    @FocusState private var focused: Bool
+    @ObservedObject var model: NowPlayingModel
+    @ObservedObject var renderer: RendererBridge
+    @State private var keys = KeyMonitor()
 
     private var showsSheet: Bool { renderer.mode == .lyrics || renderer.failure != nil }
 
@@ -31,20 +32,15 @@ struct StageView: View {
             }
         }
         .animation(.easeInOut(duration: 0.35), value: showsSheet)
-        .overlay(alignment: .bottom) { StatusBar(model: model, mode: renderer.mode) }
-        .overlay { PermissionPrompt(error: model.bridgeError) }
-        .focusable()
-        .focused($focused)
-        .focusEffectDisabled()
-        .onKeyPress(characters: CharacterSet(charactersIn: "[]0rRlL")) { press in
-            handleKey(press.characters) ? .handled : .ignored
-        }
+        .overlay(StatusBar(model: model, mode: renderer.mode), alignment: .bottom)
+        .overlay(PermissionPrompt(error: model.bridgeError))
         .task {
             model.start()
             renderer.start()
-            focused = true
+            keys.start { handleKey($0) }
         }
         .onDisappear {
+            keys.stop()
             model.stop()
             renderer.stop()
         }
@@ -61,6 +57,28 @@ struct StageView: View {
             return false
         }
         return true
+    }
+}
+
+/// Window-wide single-key shortcuts (works on macOS 12; SwiftUI's `onKeyPress` needs macOS 14).
+@MainActor
+final class KeyMonitor {
+    private var token: Any?
+
+    /// `handler` returns true when it handled the key (the key press is then swallowed).
+    func start(_ handler: @escaping @MainActor (String) -> Bool) {
+        guard token == nil else { return }
+        token = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            let modifiers = event.modifierFlags.intersection([.command, .control, .option])
+            guard modifiers.isEmpty, let characters = event.charactersIgnoringModifiers else { return event }
+            let handled = MainActor.assumeIsolated { handler(characters) }
+            return handled ? nil : event
+        }
+    }
+
+    func stop() {
+        if let token { NSEvent.removeMonitor(token) }
+        token = nil
     }
 }
 

@@ -1,5 +1,5 @@
-import * as THREE from 'three';
-import { gapState } from '../core/timeline.js';
+import * as THREE from '../../vendor/three.module.min.js';
+import { gapState, retimedLine } from '../core/timeline.js';
 import { layoutRows } from '../core/layout.js';
 import { stickerCues } from '../core/stickers.js';
 import { clamp01, smoothstep, easeInCubic, easeOutCubic, easeOutBack, damp, seeded } from '../core/easing.js';
@@ -86,6 +86,7 @@ export class LineTheme {
         track.index = index;
       }
       if (track.view) {
+        this.#adoptRetiming(track.view, deck);
         this.#placeHolder(track.view, deck);
         if (track.view.kind === 'gap') {
           this.updateGap(track.view, deck, frame);
@@ -138,6 +139,15 @@ export class LineTheme {
       if (!alive && !stickersAlive) this.disposeView(view);
       return alive || stickersAlive;
     });
+  }
+
+  /** Switches a line on screen to updated word timings (learned singer pace) without restarting it. */
+  #adoptRetiming(view, deck) {
+    if (view.kind !== 'line') return;
+    const latest = retimedLine(view.line, deck.doc, view.index);
+    if (!latest) return;
+    view.line = latest;
+    view.items.forEach((item) => { item.word = latest.w[item.i] ?? item.word; });
   }
 
   /** Outgoing songs drift up and back as they fade. */

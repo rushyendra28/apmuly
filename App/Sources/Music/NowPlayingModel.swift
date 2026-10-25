@@ -1,7 +1,7 @@
 import AppKit
 import ApmulyCore
+import Combine
 import Foundation
-import Observation
 import os
 
 enum LyricsLoad: Sendable, Equatable {
@@ -23,61 +23,68 @@ struct DeckRender: Equatable {
 
 /// Polls Music, follows playback across transitions, and loads lyrics and artwork per track.
 @MainActor
-@Observable
-final class NowPlayingModel {
+final class NowPlayingModel: ObservableObject {
     private static let logger = Logger(subsystem: "io.github.rushyendra28.apmuly", category: "now-playing")
     static let offsetStep: TimeInterval = 0.05
-    private static let playingInterval: Duration = .milliseconds(500)
-    private static let idleInterval: Duration = .seconds(1)
+    private static let playingInterval: UInt64 = 500_000_000
+    private static let idleInterval: UInt64 = 1_000_000_000
     /// After this many failed polls in a row, stop trusting the free-running clock.
     private static let maxConsecutiveFailures = 3
-    /// Backoff for automatic lyric retries after temporary failures (outage, rate limit, offline).
-    private static let lyricRetryDelays: [Duration] = [.seconds(5), .seconds(20), .seconds(60)]
+    /// Backoff (seconds) for automatic lyric retries after temporary failures (outage, rate limit, offline).
+    private static let lyricRetryDelays: [UInt64] = [5, 20, 60]
 
-    private(set) var tracker = PlaybackTracker()
-    private(set) var tracks: [String: TrackInfo] = [:]
-    private(set) var lyrics: [String: LyricsLoad] = [:]
-    private(set) var bridgeError: MusicBridgeError?
-    private(set) var offsets: [String: TimeInterval] = [:]
+    @Published private(set) var tracker = PlaybackTracker()
+    @Published private(set) var tracks: [String: TrackInfo] = [:]
+    @Published private(set) var lyrics: [String: LyricsLoad] = [:]
+    @Published private(set) var bridgeError: MusicBridgeError?
+    @Published private(set) var offsets: [String: TimeInterval] = [:]
     /// Small JPEG data URLs of each track's artwork.
-    @ObservationIgnored private(set) var artworkURLs: [String: String] = [:]
-    /// Emotion emoji and object pictures per line, per track (grows as analysis progresses).
-    @ObservationIgnored private(set) var insights: [String: [Int: LineInsight]] = [:]
+    private(set) var artworkURLs: [String: String] = [:]
+    /// Emotion emoji and object emoji per line, per track (grows as analysis progresses).
+    private(set) var insights: [String: [Int: LineInsight]] = [:]
     /// Bumped whenever a track's insights change, so the renderer knows to resend.
-    @ObservationIgnored private(set) var insightVersions: [String: Int] = [:]
-    @ObservationIgnored private let analyzer = LyricAnalyzer()
+    private(set) var insightVersions: [String: Int] = [:]
+    /// Bumped whenever a track's lyric timing changes (learned singer pace), so the renderer resends.
+    private(set) var lyricsVersions: [String: Int] = [:]
+    private let analyzer = LyricAnalyzer()
     private static let artworkMaxPixel = 256
 
-    // Sync: auto-alignment to the singer + output-device latency.
+    // Sync: auto-alignment to the singer, learned word timing, output-device latency.
     /// Music's audio (shared with the renderer for beat detection).
-    @ObservationIgnored let audioTap = MusicAudioTap()
-    @ObservationIgnored private let aligner = VocalAligner()
+    let audioTap = MusicAudioTap()
+    /// Listens for the singer; nil where the OS can't (needs audio capture: macOS 14.2+).
+    private let aligner: (any VocalListening)? = VocalListeners.make()
+    private let timingStore = TimingStore()
     /// Measured per-track offset between the lyric file and the singer.
-    private(set) var autoSync: [String: SyncEstimate] = [:]
+    @Published private(set) var autoSync: [String: SyncEstimate] = [:]
     /// Track currently being listened to for auto-sync.
-    private(set) var aligningTrackID: String?
+    @Published private(set) var aligningTrackID: String?
     /// Delay from Music to your ears on the current output device.
-    private(set) var outputLatency: TimeInterval = 0
-    @ObservationIgnored private var heardWords: [String: [HeardWord]] = [:]
-    @ObservationIgnored private var heardSinceCalibration = 0
-    @ObservationIgnored private var alignTask: Task<Void, Never>?
-    @ObservationIgnored private var feedTask: Task<Void, Never>?
-    @ObservationIgnored private var lastLatencyCheck: TimeInterval = -.infinity
+    @Published private(set) var outputLatency: TimeInterval = 0
+    /// Lyrics as fetched (before re-timing to the singer's pace).
+    private var baseDocs: [String: LyricsDocument] = [:]
+    /// Word timings learned from the singer (this play and earlier ones).
+    private var learned: [String: [WordObservation]] = [:]
+    private var heardWords: [String: [HeardWord]] = [:]
+    private var heardSinceCalibration = 0
+    private var alignTask: Task<Void, Never>?
+    private var feedTask: Task<Void, Never>?
+    private var lastLatencyCheck: TimeInterval = -.infinity
     private static let maxHeardWords = 800
     private static let recalibrateEvery = 6
     private static let latencyCheckInterval: TimeInterval = 5
-    private static let feedInterval: Duration = .milliseconds(250)
+    private static let feedInterval: UInt64 = 250_000_000
 
-    @ObservationIgnored private let bridge: MusicBridge
-    @ObservationIgnored private let lyricsService: LyricsService
-    @ObservationIgnored private let defaults: UserDefaults
-    @ObservationIgnored private var pollTask: Task<Void, Never>?
-    @ObservationIgnored private var observer: MusicNotificationObserver?
+    private let bridge: MusicBridge
+    private let lyricsService: LyricsService
+    private let defaults: UserDefaults
+    private var pollTask: Task<Void, Never>?
+    private var observer: MusicNotificationObserver?
     /// Keeps App Nap from throttling polls while Apmuly sits behind Music.
-    @ObservationIgnored private var activity: (any NSObjectProtocol)?
-    @ObservationIgnored private var consecutiveFailures = 0
-    @ObservationIgnored private var health = PollHealth()
-    @ObservationIgnored private var lyricAttempts: [String: Int] = [:]
+    private var activity: (any NSObjectProtocol)?
+    private var consecutiveFailures = 0
+    private var health = PollHealth()
+    private var lyricAttempts: [String: Int] = [:]
 
     init(bridge: MusicBridge = MusicBridge(), lyricsService: LyricsService = LyricsService(),
          defaults: UserDefaults = .standard) {
@@ -95,7 +102,7 @@ final class NowPlayingModel {
                 guard let self else { return }
                 await self.pollNow()
                 let playing = self.tracker.current?.clock.isRunning == true
-                try? await Task.sleep(for: playing ? Self.playingInterval : Self.idleInterval)
+                try? await Task.sleep(nanoseconds: playing ? Self.playingInterval : Self.idleInterval)
             }
         }
         // Music posts this on play/pause/skip and at the switch point of an AutoMix transition.
@@ -106,11 +113,13 @@ final class NowPlayingModel {
         activity = ProcessInfo.processInfo.beginActivity(
             options: .userInitiatedAllowingIdleSystemSleep,
             reason: "Following Music playback to keep lyrics in sync")
-        feedTask = Task { [weak self] in
-            while !Task.isCancelled {
-                guard let self else { return }
-                if let chunk = self.audioTap.drainSamples() { await self.aligner.feed(chunk) }
-                try? await Task.sleep(for: Self.feedInterval)
+        if let aligner {
+            feedTask = Task { [weak self] in
+                while !Task.isCancelled {
+                    guard let self else { return }
+                    if let chunk = self.audioTap.drainSamples() { await aligner.feed(chunk) }
+                    try? await Task.sleep(nanoseconds: Self.feedInterval)
+                }
             }
         }
     }
@@ -148,7 +157,7 @@ final class NowPlayingModel {
         }
     }
 
-    // MARK: - Sync (auto-alignment + output latency)
+    // MARK: - Sync (auto-alignment, singer pace, output latency)
 
     private func refreshOutputLatency(at hostTime: TimeInterval) {
         guard hostTime - lastLatencyCheck >= Self.latencyCheckInterval else { return }
@@ -162,8 +171,8 @@ final class NowPlayingModel {
 
     /// Starts listening for the current song (once per track) when it has timed lyrics.
     private func updateAlignment() {
-        guard let deck = tracker.current, deck.clock.isRunning, deck.trackID != aligningTrackID,
-              case .loaded(.lyrics(let doc)) = lyrics[deck.trackID], doc.timing != .unsynced
+        guard let aligner, let deck = tracker.current, deck.clock.isRunning, deck.trackID != aligningTrackID,
+              let doc = baseDocs[deck.trackID]
         else { return }
         let trackID = deck.trackID
         aligningTrackID = trackID
@@ -172,10 +181,10 @@ final class NowPlayingModel {
         audioTap.setCollecting(true)
         let languageSample = doc.lines.map(\.text).joined(separator: " ")
         alignTask = Task { [weak self] in
-            guard let self, let words = await self.aligner.start(languageSample: languageSample) else { return }
+            guard let words = await aligner.start(languageSample: languageSample) else { return }
             for await word in words {
                 if Task.isCancelled { break }
-                self.record(word, trackID: trackID, doc: doc)
+                self?.record(word, trackID: trackID)
             }
         }
     }
@@ -185,11 +194,13 @@ final class NowPlayingModel {
         alignTask = nil
         aligningTrackID = nil
         audioTap.setCollecting(false)
-        Task { await aligner.stop() }
+        if let aligner { Task { await aligner.stop() } }
     }
 
-    private func record(_ word: HeardAudioWord, trackID: String, doc: LyricsDocument) {
-        guard let deck = tracker.current, deck.trackID == trackID, word.hostTime >= deck.since else { return }
+    private func record(_ word: HeardAudioWord, trackID: String) {
+        guard let deck = tracker.current, deck.trackID == trackID, word.hostTime >= deck.since,
+              let doc = baseDocs[trackID]
+        else { return }
         let heard = HeardWord(text: word.text, position: deck.clock.position(at: word.hostTime))
         heardWords[trackID, default: []].append(heard)
         if heardWords[trackID, default: []].count > Self.maxHeardWords { heardWords[trackID]?.removeFirst() }
@@ -208,6 +219,37 @@ final class NowPlayingModel {
         if previous.map({ abs($0 - estimate.globalOffset) > 0.02 }) ?? true {
             Self.logger.info("Auto-sync \(trackID, privacy: .public): \(Int(estimate.globalOffset * 1000)) ms from \(estimate.matchCount) matched words")
         }
+        learnWordTiming(trackID, heard: allHeard, doc: doc, estimate: estimate)
+    }
+
+    /// Re-times words to the singer's pace from what was heard, and remembers it for next time.
+    private func learnWordTiming(_ trackID: String, heard: [HeardWord], doc: LyricsDocument, estimate: SyncEstimate) {
+        let observed = LyricMatcher.observe(heard: heard, lyrics: doc) { estimate.offset(at: $0) }
+        guard !observed.isEmpty else { return }
+        learned[trackID] = Self.merge(learned[trackID] ?? [], observed)
+        applyLearnedTiming(trackID)
+        Self.logger.info("Singer pace \(trackID, privacy: .public): \(self.learned[trackID]?.count ?? 0) words timed")
+        let store = timingStore
+        Task {
+            do throws(LyricsError) {
+                try await store.save(observed, for: trackID)
+            } catch {
+                Self.logger.error("Could not save word timing for \(trackID, privacy: .public)")
+            }
+        }
+    }
+
+    private func applyLearnedTiming(_ trackID: String) {
+        guard let base = baseDocs[trackID] else { return }
+        lyrics[trackID] = .loaded(.lyrics(WordRetimer.retime(base, observations: learned[trackID] ?? [])))
+        lyricsVersions[trackID, default: 0] += 1
+    }
+
+    /// Newest observation of each word wins.
+    private static func merge(_ old: [WordObservation], _ new: [WordObservation]) -> [WordObservation] {
+        var byWord: [String: WordObservation] = [:]
+        for observation in old + new { byWord["\(observation.line):\(observation.word)"] = observation }
+        return Array(byWord.values)
     }
 
     /// Total shift applied to lyric timing at `position` (user nudge + auto-sync + output delay).
@@ -255,10 +297,16 @@ final class NowPlayingModel {
         Task {
             do throws(LyricsError) {
                 let result = try await lyricsService.lyrics(for: track)
-                lyrics[track.id] = .loaded(result)
-                if case .lyrics(let doc) = result, doc.timing != .unsynced, insights[track.id] == nil {
-                    analyzeInsights(track.id, doc)
+                guard case .lyrics(let doc) = result, doc.timing != .unsynced else {
+                    lyrics[track.id] = .loaded(result)
+                    lyricsVersions[track.id, default: 0] += 1
+                    return
                 }
+                baseDocs[track.id] = doc
+                // Timing learned on earlier plays puts words on the singer's pace from the first line.
+                learned[track.id] = await timingStore.load(track.id)
+                applyLearnedTiming(track.id)
+                if insights[track.id] == nil { analyzeInsights(track.id, doc) }
             } catch {
                 Self.logger.error("Lyrics failed for \(track.id, privacy: .public): \(String(describing: error), privacy: .public)")
                 lyrics[track.id] = .failed(error)
@@ -271,10 +319,10 @@ final class NowPlayingModel {
         let attempt = lyricAttempts[track.id, default: 0]
         guard error.isTransient, attempt < Self.lyricRetryDelays.count else { return }
         lyricAttempts[track.id] = attempt + 1
-        let delay = Self.lyricRetryDelays[attempt]
-        Self.logger.info("Retrying lyrics for \(track.id, privacy: .public) in \(String(describing: delay), privacy: .public)")
+        let seconds = Self.lyricRetryDelays[attempt]
+        Self.logger.info("Retrying lyrics for \(track.id, privacy: .public) in \(seconds) s")
         Task {
-            try? await Task.sleep(for: delay)
+            try? await Task.sleep(nanoseconds: seconds * 1_000_000_000)
             guard case .failed = lyrics[track.id] else { return }
             lyrics[track.id] = nil
             loadLyrics(for: track)

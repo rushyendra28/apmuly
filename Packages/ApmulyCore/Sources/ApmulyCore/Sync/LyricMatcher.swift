@@ -23,6 +23,19 @@ public struct SyncMatch: Sendable, Equatable {
     }
 }
 
+/// When one specific lyric word was actually sung, on the lyric file's timeline.
+public struct WordObservation: Sendable, Equatable, Codable {
+    public let line: Int
+    public let word: Int
+    public let time: TimeInterval
+
+    public init(line: Int, word: Int, time: TimeInterval) {
+        self.line = line
+        self.word = word
+        self.time = time
+    }
+}
+
 /// Matches words recognised from the singer's voice to the lyric file's words.
 /// Filler words never anchor a match. A match counts when a nearby heard word agrees with a nearby
 /// lyric word (allowing one missed word, since sung vocals are recognised patchily), or when the word
@@ -43,11 +56,41 @@ public enum LyricMatcher {
         "out", "how", "when", "not", "one", "say", "said", "too", "yes", "ohh", "whoa", "mmm",
     ]
 
-    public static func match(heard: [HeardWord], lyrics: LyricsDocument) -> [SyncMatch] {
-        let flat = lyrics.lines.flatMap(\.words).map { (key: key($0.text), start: $0.start) }
-        let keys = heard.map { key($0.text) }
+    private struct FlatWord {
+        let key: String
+        let start: TimeInterval
+        let line: Int
+        let word: Int
+    }
 
-        return heard.indices.compactMap { i -> SyncMatch? in
+    /// Matches as (lyric time, heard time) pairs, for calibrating the song's overall offset.
+    public static func match(heard: [HeardWord], lyrics: LyricsDocument) -> [SyncMatch] {
+        let flat = flatten(lyrics)
+        return pairs(heard: heard, flat: flat).map { SyncMatch(lyricTime: flat[$0.lyric].start, heardTime: heard[$0.heard].position) }
+    }
+
+    /// Matches as word observations on the lyric file's timeline (heard time minus the sync offset),
+    /// for re-timing words to the singer's pace.
+    public static func observe(heard: [HeardWord], lyrics: LyricsDocument,
+                               offset: (TimeInterval) -> TimeInterval) -> [WordObservation] {
+        let flat = flatten(lyrics)
+        return pairs(heard: heard, flat: flat).map { pair in
+            let word = flat[pair.lyric]
+            return WordObservation(line: word.line, word: word.word, time: heard[pair.heard].position - offset(word.start))
+        }
+    }
+
+    private static func flatten(_ lyrics: LyricsDocument) -> [FlatWord] {
+        lyrics.lines.enumerated().flatMap { lineIndex, line in
+            line.words.enumerated().map { wordIndex, word in
+                FlatWord(key: key(word.text), start: word.start, line: lineIndex, word: wordIndex)
+            }
+        }
+    }
+
+    private static func pairs(heard: [HeardWord], flat: [FlatWord]) -> [(heard: Int, lyric: Int)] {
+        let keys = heard.map { key($0.text) }
+        return heard.indices.compactMap { i -> (heard: Int, lyric: Int)? in
             let k = keys[i]
             guard k.count >= minimumLength, !fillerWords.contains(k) else { return nil }
             let candidates = flat.indices.filter { flat[$0].key == k && abs(flat[$0].start - heard[i].position) <= searchWindow }
@@ -55,13 +98,12 @@ public enum LyricMatcher {
             else { return nil }
             let distinctive = k.count >= distinctiveLength && candidates.count == 1
             guard distinctive || neighbourAgrees(i, index, keys: keys, flat: flat) else { return nil }
-            return SyncMatch(lyricTime: flat[index].start, heardTime: heard[i].position)
+            return (i, index)
         }
     }
 
     /// Whether a heard word near `i` equals a lyric word near `index` on the same side.
-    private static func neighbourAgrees(_ i: Int, _ index: Int, keys: [String],
-                                        flat: [(key: String, start: TimeInterval)]) -> Bool {
+    private static func neighbourAgrees(_ i: Int, _ index: Int, keys: [String], flat: [FlatWord]) -> Bool {
         for direction in [-1, 1] {
             for heardStep in 1...neighbourReach {
                 let h = i + direction * heardStep

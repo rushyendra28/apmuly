@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import * as THREE from '../../vendor/three.module.min.js';
 import { LineTheme } from './lineTheme.js';
 import { wordPhase } from '../core/timeline.js';
 import { clamp01, lerp, easeOutBack, easeOutCubic, easeInCubic, smoothstep, seeded, damp } from '../core/easing.js';

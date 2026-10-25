@@ -1,34 +1,33 @@
 import AppKit
 import ApmulyCore
+import Combine
 import Foundation
-import Observation
 import os
 import WebKit
 
 /// Owns the 3D renderer web view and streams playback state into it at ~30 Hz.
 @MainActor
-@Observable
-final class RendererBridge: NSObject {
+final class RendererBridge: NSObject, ObservableObject {
     private static let logger = Logger(subsystem: "io.github.rushyendra28.apmuly", category: "renderer")
     private static let modeKey = "stageMode"
     private static let tickInterval: TimeInterval = 1.0 / 30
     private static let handlerName = "apmuly"
 
-    private(set) var mode: StageMode
+    @Published private(set) var mode: StageMode
     /// Set when the renderer can't start; the UI falls back to the native lyrics sheet.
-    private(set) var failure: String?
+    @Published private(set) var failure: String?
 
-    @ObservationIgnored private let model: NowPlayingModel
-    @ObservationIgnored private let audio: MusicAudioTap
-    @ObservationIgnored private let defaults: UserDefaults
-    @ObservationIgnored private weak var webView: WKWebView?
-    @ObservationIgnored private var timer: Timer?
-    @ObservationIgnored private var isReady = false
-    @ObservationIgnored private var sentLyrics: Set<String> = []
-    @ObservationIgnored private var sentInsightVersions: [String: Int] = [:]
-    @ObservationIgnored private var sentTrackStates: [String: String] = [:]
-    @ObservationIgnored private var sentArtwork: Set<String> = []
-    @ObservationIgnored private let encoder = JSONEncoder()
+    private let model: NowPlayingModel
+    private let audio: MusicAudioTap
+    private let defaults: UserDefaults
+    private weak var webView: WKWebView?
+    private var timer: Timer?
+    private var isReady = false
+    private var sentLyricsVersions: [String: Int] = [:]
+    private var sentInsightVersions: [String: Int] = [:]
+    private var sentTrackStates: [String: String] = [:]
+    private var sentArtwork: Set<String> = []
+    private let encoder = JSONEncoder()
 
     init(model: NowPlayingModel, defaults: UserDefaults = .standard) {
         self.model = model
@@ -53,7 +52,7 @@ final class RendererBridge: NSObject {
         webView.navigationDelegate = self
         webView.setValue(false, forKey: "drawsBackground")
         #if DEBUG
-        webView.isInspectable = true
+        if #available(macOS 13.3, *) { webView.isInspectable = true }
         #endif
         self.webView = webView
         if root == nil {
@@ -118,8 +117,9 @@ final class RendererBridge: NSObject {
             sentTrackStates[id] = lyricsState
             send("setTrack", RendererPayload.Track(trackID: id, title: track.title, artist: track.artist, lyrics: lyricsState))
         }
-        if !sentLyrics.contains(id), case .loaded(.lyrics(let doc)) = deck.lyrics, doc.timing != .unsynced {
-            sentLyrics.insert(id)
+        let lyricsVersion = model.lyricsVersions[id] ?? 0
+        if sentLyricsVersions[id] != lyricsVersion, case .loaded(.lyrics(let doc)) = deck.lyrics, doc.timing != .unsynced {
+            sentLyricsVersions[id] = lyricsVersion
             send("setLyrics", RendererPayload.Lyrics(trackID: id, document: doc))
         }
         if let version = model.insightVersions[id], sentInsightVersions[id] != version, let insights = model.insights[id] {
@@ -160,7 +160,7 @@ final class RendererBridge: NSObject {
         case "ready":
             isReady = true
             failure = nil
-            sentLyrics = []
+            sentLyricsVersions = [:]
             sentInsightVersions = [:]
             sentTrackStates = [:]
             sentArtwork = []

@@ -22,7 +22,7 @@ public struct URLSessionHTTPClient: HTTPClient {
 /// Strategy: exact lookup by full metadata, then a ranked search with cleaned title/artist.
 public struct LRCLIBClient: LyricsProvider {
     public static let defaultBaseURL = URL(string: "https://lrclib.net")!
-    public static let defaultUserAgent = "Apmuly/1.0 (+https://github.com/rushyendra28/apmuly)"
+    public static let defaultUserAgent = "Apmuly/1.1 (+https://github.com/rushyendra28/apmuly)"
     private static let timeout: TimeInterval = 15
 
     private let http: any HTTPClient

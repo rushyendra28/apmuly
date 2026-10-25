@@ -4,11 +4,13 @@ import FoundationModels
 import NaturalLanguage
 import os
 
+@available(macOS 26.0, *)
 @Generable
 enum LineEmotion: String {
     case joy, love, sadness, anger, excitement, calm, fear, confidence, heartbreak, longing, neutral
 }
 
+@available(macOS 26.0, *)
 @Generable
 struct LineLabel {
     @Guide(description: "The number of the line, exactly as given")
@@ -19,6 +21,7 @@ struct LineLabel {
     var objects: [String]
 }
 
+@available(macOS 26.0, *)
 @Generable
 struct LineLabels {
     @Guide(description: "One entry per numbered line")
@@ -26,7 +29,8 @@ struct LineLabels {
 }
 
 /// Reads each lyric line's emotion and the concrete things it mentions — entirely on device.
-/// Uses Apple's on-device language model when available, else NaturalLanguage sentiment + keywords.
+/// Uses Apple's on-device language model when available (macOS 26 + Apple Intelligence), else
+/// NaturalLanguage sentiment + keywords (macOS 12+).
 /// Lyric text never leaves the Mac and is never logged.
 actor LyricAnalyzer {
     private static let logger = Logger(subsystem: "io.github.rushyendra28.apmuly", category: "lyric-analyzer")
@@ -50,14 +54,14 @@ actor LyricAnalyzer {
 
     private func analyze(_ document: LyricsDocument, emit: ([Int: LineReading]) -> Void) async {
         let sung = document.lines.enumerated().filter { !$0.element.isGap }.map { (index: $0.offset, line: $0.element) }
-        let useModel = SystemLanguageModel.default.isAvailable
+        let useModel = Self.modelAvailable
         var modelFailures = 0
 
         for start in stride(from: 0, to: sung.count, by: Self.chunkSize) {
             if Task.isCancelled { return }
             let chunk = Array(sung[start..<min(start + Self.chunkSize, sung.count)])
             var readings = [Int: LineReading]()
-            if useModel {
+            if useModel, #available(macOS 26.0, *) {
                 do {
                     readings = try await modelReadings(chunk)
                 } catch {
@@ -73,6 +77,12 @@ actor LyricAnalyzer {
         Self.logger.info("Analyzed \(sung.count) lines (model: \(useModel), fallback chunks: \(modelFailures))")
     }
 
+    private static var modelAvailable: Bool {
+        guard #available(macOS 26.0, *) else { return false }
+        return SystemLanguageModel.default.isAvailable
+    }
+
+    @available(macOS 26.0, *)
     private func modelReadings(_ chunk: [(index: Int, line: LyricLine)]) async throws -> [Int: LineReading] {
         let session = LanguageModelSession(instructions: Self.instructions)
         let prompt = "Lines:\n" + chunk.map { "\($0.index): \($0.line.text)" }.joined(separator: "\n")

@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { lineIndexAt, wordPhase, gapState } from '../Resources/Renderer/js/core/timeline.js';
+import { lineIndexAt, wordPhase, gapState, retimedLine } from '../Resources/Renderer/js/core/timeline.js';
 import { anchorFrom, positionAt, reanchor } from '../Resources/Renderer/js/core/clock.js';
 import { initialBeat, detectBeat, decayPulse } from '../Resources/Renderer/js/core/beat.js';
 import { layoutRows } from '../Resources/Renderer/js/core/layout.js';
@@ -39,6 +39,16 @@ test('gapState reports instrumental breaks and progress to the next line', () =>
   const intro = gapState(lines, -1, 0.5);
   assert.equal(intro.inGap, true);
   assert.equal(intro.untilNext, 0.5);
+});
+
+test('retimedLine picks up new word timings for the same line, and ignores different lines', () => {
+  const shown = lines[0];
+  const updated = { ...shown, w: [{ t: 'alpha', s: 1.2, e: 2.4 }, { t: 'beta', s: 2.4, e: 3.6 }] };
+  assert.equal(retimedLine(shown, { lines: [updated] }, 0), updated);
+  assert.equal(retimedLine(shown, { lines: [shown] }, 0), null, 'unchanged');
+  assert.equal(retimedLine(shown, { lines: [lines[2]] }, 0), null, 'different text');
+  assert.equal(retimedLine(shown, { lines: [] }, 0), null, 'missing line');
+  assert.equal(retimedLine(shown, null, 0), null, 'no document');
 });
 
 test('clock extrapolates while running and holds while paused', () => {

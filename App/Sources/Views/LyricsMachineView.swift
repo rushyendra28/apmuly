@@ -4,7 +4,7 @@ import SwiftUI
 /// Lyrics mode: the whole song as a readable sheet. The current line fills word by word and is
 /// kept centred; past lines fade, upcoming lines wait. Emoji from the lyric analysis trail each line.
 struct LyricsMachineView: View {
-    let model: NowPlayingModel
+    @ObservedObject var model: NowPlayingModel
     var showsNoLyricsCaption = true
 
     var body: some View {
@@ -37,7 +37,7 @@ private struct LyricsSheet: View {
     var body: some View {
         let current = doc.lineIndex(at: position)
         ScrollViewReader { proxy in
-            ScrollView(.vertical) {
+            ScrollView(.vertical, showsIndicators: false) {
                 LazyVStack(alignment: .leading, spacing: 22) {
                     Color.clear.frame(height: 240)
                     ForEach(doc.lines.indices, id: \.self) { i in
@@ -52,11 +52,10 @@ private struct LyricsSheet: View {
                 .frame(maxWidth: 1000, alignment: .leading)
                 .frame(maxWidth: .infinity)
             }
-            .scrollIndicators(.hidden)
             .mask(LinearGradient(gradient: Self.edgeFade, startPoint: .top, endPoint: .bottom))
             .onAppear { proxy.scrollTo(current ?? 0, anchor: .center) }
-            .onChange(of: current) { _, line in
-                withAnimation(.spring(duration: 0.55, bounce: 0.12)) { proxy.scrollTo(line ?? 0, anchor: .center) }
+            .onChange(of: current) { line in
+                withAnimation(.spring(response: 0.55, dampingFraction: 0.85)) { proxy.scrollTo(line ?? 0, anchor: .center) }
             }
         }
     }
@@ -85,7 +84,7 @@ private struct LyricRow: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .scaleEffect(relation == .current ? 1 : 0.86, anchor: .leading)
             .blur(radius: relation == .current ? 0 : 0.5)
-            .animation(.spring(duration: 0.45), value: relation)
+            .animation(.spring(response: 0.45, dampingFraction: 0.85), value: relation)
     }
 
     @ViewBuilder
@@ -102,15 +101,16 @@ private struct LyricRow: View {
     private var trailing: String { emoji.isEmpty ? "" : "  " + emoji }
 
     /// Sung words light up progressively; upcoming words stay dim.
+    /// (`foregroundColor` + `Text` concatenation keep this a `Text` on macOS 12.)
     private func karaoke(at position: TimeInterval) -> Text {
         let words = line.words.enumerated().reduce(Text("")) { text, item in
             let (i, word) = item
             let fill = word.end > word.start ? min(1, max(0, (position - word.start) / (word.end - word.start)))
                 : (position >= word.start ? 1 : 0)
             let piece = Text(word.text + (i < line.words.count - 1 ? " " : ""))
-                .foregroundStyle(.white.opacity(0.35 + 0.65 * fill))
-            return Text("\(text)\(piece)")
+                .foregroundColor(Color.white.opacity(0.35 + 0.65 * fill))
+            return text + piece
         }
-        return Text("\(words)\(Text(trailing))")
+        return words + Text(trailing)
     }
 }

@@ -31,6 +31,8 @@
 - **Works with the Music app** — open Apmuly and play anything in Apple Music: streaming, your library, playlists.
 - **Lyrics in sync** — time-synced lyrics from [LRCLIB](https://lrclib.net), tracked to the millisecond, through
   pauses, seeks, skips and **AutoMix / crossfade** transitions.
+- **Words at the singer's pace** — Apmuly listens to the vocals (on-device) and moves each word to when it's actually
+  sung, carries that to repeated choruses, and remembers it for the next time you play the song.
 - **Kinetic Depth** — chrome words fly out of warp-speed streaks and land exactly as they're sung; the word
   being sung pushes toward you; finished lines rocket past the camera. Everything moves to the beat.
 - **Emoji that fit the song** — a mood emoji for each expressive line and emoji for the things it mentions
@@ -45,10 +47,19 @@
 
 | | |
 |---|---|
-| **macOS** | 26 (Tahoe) or later — Apple silicon or Intel |
+| **macOS** | 12 (Monterey) or later — Apple silicon or Intel |
 | **Music** | The Music app with an Apple Music subscription, or songs in your library |
 | **Internet** | To look up lyrics |
-| **Optional** | [Apple Intelligence](https://support.apple.com/en-us/121115) turned on (Apple silicon) for the best emoji. Without it, Apmuly uses a simpler built-in analysis. |
+| **Optional** | [Apple Intelligence](https://support.apple.com/en-us/121115) turned on (macOS 26, Apple silicon) for the best emoji. Without it, Apmuly uses a simpler built-in analysis. |
+
+Everything works on macOS 12. A few extras need newer versions:
+
+| Feature | macOS |
+|---|---|
+| Synced lyrics, Kinetic Depth, Lyrics mode, emoji | 12+ |
+| Visuals that move to the music's beat, spectrum visualizer | 14.2+ (earlier versions pulse with the words instead) |
+| Auto-sync and words at the singer's pace | 14.2+ (needs audio capture and on-device speech recognition) |
+| Emoji from Apple's on-device language model | 26+ with Apple Intelligence |
 
 ## Install
 
@@ -79,8 +90,8 @@ The first time you play a song, macOS asks for these:
 | Prompt | Why | Required? |
 |---|---|---|
 | **"Apmuly" wants access to control "Music"** | To read which song is playing and where you are in it | **Yes** — click **OK** |
-| **Capture audio from other apps** | So the visuals move to the beat, the visualizer has a spectrum, and auto-sync can hear the singer. Nothing is recorded or saved. | Recommended |
-| **Speech recognition** (if asked) | Auto-sync, on-device | Optional |
+| **Capture audio from other apps** (macOS 14.2+) | So the visuals move to the beat, the visualizer has a spectrum, and auto-sync can hear the singer. Nothing is recorded or saved. | Recommended |
+| **Speech recognition** (if asked) | Auto-sync and singer-paced words, on-device only | Optional |
 
 You can change these later in **System Settings → Privacy & Security** (Automation, Screen & System Audio
 Recording, Speech Recognition).
@@ -110,8 +121,8 @@ is your own adjustment.
 - **Everything else stays on your Mac:** mood/emoji analysis (Apple's on-device model or NaturalLanguage), speech
   recognition for auto-sync, and the audio analysis. Audio is never recorded, saved or sent anywhere, and lyric text
   isn't logged.
-- **Stored data:** found lyrics are cached in `~/Library/Application Support/apmuly/` (delete the folder to clear it);
-  settings live in the app's preferences.
+- **Stored data:** found lyrics and learned word timings (word positions and times only) are kept in
+  `~/Library/Application Support/apmuly/` (delete the folder to clear them); settings live in the app's preferences.
 
 ## Troubleshooting
 
@@ -122,11 +133,13 @@ is your own adjustment.
 | Visuals don't move with the music; no spectrum | Allow Apmuly under **Privacy & Security → Screen & System Audio Recording**. |
 | "No lyrics found" / visualizer instead of lyrics | LRCLIB has no synced lyrics for that track (common for remixes, sped-up edits, classical). |
 | Lyrics a little early or late | Press **]** or **[**. Auto-sync also corrects this after a few lines when it can hear the vocals clearly. |
+| Words run ahead of or behind the singer | Apmuly learns the singer's pace as the song plays (macOS 14.2+); choruses and later plays of the song get it right from the start. |
 | Lyrics briefly wrong after skipping | They catch up within a second; Apmuly checks Music twice a second. |
 
 ## Build from source
 
-You need **macOS 26+**, **Xcode 26+**, [Homebrew](https://brew.sh), and **Node 22+** (only for the renderer tests).
+You need **Xcode 26+** (building requires a Mac on macOS 26+; the app itself runs on macOS 12+),
+[Homebrew](https://brew.sh), and **Node 22+** (only for the renderer tests).
 
 ```sh
 git clone https://github.com/rushyendra28/apmuly.git
@@ -171,7 +184,7 @@ NOTARY_PROFILE=apmuly-notary make release
 ```
 Music.app ──Apple Events──▶ Music bridge ──▶ Playback tracker (AutoMix-aware clock)
                                                      │
-LRCLIB ──▶ Lyrics service (cache) ──▶ Lyric timeline ┤
+LRCLIB ──▶ Lyrics service (cache) ──▶ Lyric timeline ┤   (re-timed to the singer's pace)
                                                      ├──▶ Lyrics mode (SwiftUI)
 Music audio ──process tap──▶ beat · spectrum ────────┤
               └──▶ speech recognition ──▶ auto-sync ─┤

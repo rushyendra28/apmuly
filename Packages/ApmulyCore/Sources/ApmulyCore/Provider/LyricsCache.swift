@@ -26,7 +26,7 @@ public actor LyricsCache {
     }
 
     public static var defaultDirectory: URL {
-        URL.applicationSupportDirectory.appendingPathComponent("apmuly/lyrics", isDirectory: true)
+        ApmulyPaths.applicationSupport.appendingPathComponent("lyrics", isDirectory: true)
     }
 
     public func lookup(_ trackID: String) -> CacheLookup {

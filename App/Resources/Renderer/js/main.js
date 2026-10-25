@@ -1,4 +1,4 @@
-import { FontLoader } from 'three/addons/loaders/FontLoader.js';
+import { FontLoader } from '../vendor/addons/loaders/FontLoader.js';
 import { Stage } from './engine/stage.js';
 import { WordFactory } from './engine/words.js';
 import { Sparkles } from './engine/particles.js';

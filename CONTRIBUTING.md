@@ -4,7 +4,8 @@ Thanks for helping! Bug reports, ideas and pull requests are all welcome.
 
 ## Development setup
 
-You need macOS 26 or later, Xcode 26 or later, [Homebrew](https://brew.sh) and Node 22+.
+You need Xcode 26 or later (on macOS 26+), [Homebrew](https://brew.sh) and Node 22+. The app targets
+macOS 12, so gate newer APIs with `#available` / `@available` — the build fails if you forget.
 
 ```sh
 git clone https://github.com/rushyendra28/apmuly.git

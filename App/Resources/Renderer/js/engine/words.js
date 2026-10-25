@@ -1,5 +1,5 @@
-import * as THREE from 'three';
-import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
+import * as THREE from '../../vendor/three.module.min.js';
+import { TextGeometry } from '../../vendor/addons/geometries/TextGeometry.js';
 
 const DEPTH = 0.32;
 /** Vertical offset that centres capital letters on y = 0 for a size-1 font. */

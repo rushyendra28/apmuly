@@ -61,10 +61,10 @@ public enum LRCParser {
     }
 
     private static func enhancedWords(in body: String, offset: TimeInterval) -> [TimedWord]? {
-        let pattern = /<(\d+:\d+(?:\.\d+)?)>\s*([^<]*)/
-        let words = body.matches(of: pattern).compactMap { match -> TimedWord? in
-            guard let start = timestamp(String(match.1)) else { return nil }
-            let text = match.2.trimmingCharacters(in: .whitespaces)
+        let pattern = Patterns.regex(#"<(\d+:\d+(?:\.\d+)?)>\s*([^<]*)"#)
+        let words = Patterns.captures(pattern, in: body).compactMap { groups -> TimedWord? in
+            guard let start = timestamp(groups[1]) else { return nil }
+            let text = groups[2].trimmingCharacters(in: .whitespaces)
             return text.isEmpty ? nil : TimedWord(text: text, start: max(0, start - offset))
         }
         return words.isEmpty ? nil : words

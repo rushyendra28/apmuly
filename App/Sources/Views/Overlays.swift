@@ -11,7 +11,7 @@ struct CurrentStatusOverlay: View {
 
     var body: some View {
         if model.tracker.current == nil {
-            StatusText(text: "Play something in Apple Music")
+            StatusText(text: playPrompt)
         } else {
             switch model.currentLyrics {
             case .loaded(.lyrics(let doc)) where doc.timing == .unsynced:
@@ -30,6 +30,14 @@ struct CurrentStatusOverlay: View {
 }
 
 extension CurrentStatusOverlay {
+    private var playPrompt: String {
+        switch model.sourcePreference {
+        case .auto: "Play something in Apple Music or Spotify"
+        case .appleMusic: "Play something in Apple Music"
+        case .spotify: "Play something in Spotify"
+        }
+    }
+
     private var noLyricsText: String {
         if case .loaded(.instrumental) = model.currentLyrics { return "♪ Instrumental" }
         return "No lyrics found for \(model.currentTrack?.title ?? "this track")"
@@ -112,7 +120,7 @@ struct StatusBar: View {
             Spacer()
             Text(mode == .lyrics ? mode.title : theme.title)
             Text(syncLabel).monospacedDigit()
-            Text("L lyrics · 1–\(StageTheme.allCases.count) or T theme · P live pacing · [ ] nudge · 0 reset").foregroundStyle(.white.opacity(0.5))
+            Text("L lyrics · 1–\(StageTheme.allCases.count) or T theme · P live pacing · S source · [ ] nudge · 0 reset").foregroundStyle(.white.opacity(0.5))
         }
         .font(.system(size: 12, weight: .medium, design: .rounded))
         .foregroundStyle(.white.opacity(0.8))
@@ -141,17 +149,19 @@ struct StatusBar: View {
             parts.append(String(format: "nudge %+.2fs", nudge))
         }
         if !livePacing { parts.append("live pacing off") }
+        if let source = model.source { parts.insert("via \(source.displayName)\(model.sourcePreference == .auto ? "" : " (fixed)")", at: 0) }
         return parts.isEmpty ? "in sync" : parts.joined(separator: " · ")
     }
 }
 
 struct PermissionPrompt: View {
     let error: MusicBridgeError?
+    var appName = "Music"
 
     var body: some View {
         if error == .notAuthorized {
             VStack(spacing: 16) {
-                Text("Apmuly needs permission to read what's playing in Music.")
+                Text("Apmuly needs permission to read what's playing in \(appName).")
                     .font(.title3.weight(.semibold))
                 Button("Open Automation Settings") {
                     let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation")

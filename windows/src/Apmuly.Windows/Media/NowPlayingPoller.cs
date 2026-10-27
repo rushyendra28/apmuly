@@ -24,8 +24,12 @@ internal sealed partial class NowPlayingPoller : IDisposable
     private bool _polling;
     private bool _pollAgain;
 
-    public NowPlayingPoller(SmtcNowPlaying smtc, NowPlayingModel model, Dispatcher dispatcher, ILogger<NowPlayingPoller> logger)
+    private readonly Func<SourcePreference> _preference;
+
+    public NowPlayingPoller(SmtcNowPlaying smtc, NowPlayingModel model, Func<SourcePreference> preference,
+                            Dispatcher dispatcher, ILogger<NowPlayingPoller> logger)
     {
+        _preference = preference;
         _smtc = smtc;
         _model = model;
         _dispatcher = dispatcher;
@@ -36,6 +40,9 @@ internal sealed partial class NowPlayingPoller : IDisposable
         _poll.Stop();
         _debounce.Stop();
     }
+
+    /// <summary>Reads now (e.g. after the player preference changed).</summary>
+    public void PollSoon() => _ = PollAsync();
 
     public void Start()
     {
@@ -66,7 +73,7 @@ internal sealed partial class NowPlayingPoller : IDisposable
         _polling = true;
         try
         {
-            var read = await _smtc.ReadAsync();
+            var read = await _smtc.ReadAsync(_preference());
             var sample = MediaSampler.From(read?.Reading, HostClock.Now, DateTimeOffset.Now);
             _model.Ingest(sample.Track, sample.Sample);
             if (sample.Track is { } track && _model.NeedsArtwork(track.Id) && !_artworkLoading.Contains(track.Id))

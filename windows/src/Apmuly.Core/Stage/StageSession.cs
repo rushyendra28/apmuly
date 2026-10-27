@@ -1,3 +1,4 @@
+using Apmuly.Core.Media;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -34,6 +35,9 @@ public sealed partial class StageSession
     }
 
     public StageSettings Settings { get; private set; }
+
+    /// <summary>The player preference, read by the now-playing poller each poll.</summary>
+    public SourcePreference SourcePreference => Settings.Source;
 
     /// <summary>True once the page has said "ready" (calls before that are dropped by the host).</summary>
     public bool IsReady { get; private set; }
@@ -73,6 +77,8 @@ public sealed partial class StageSession
                 return Apply(Settings with { Theme = theme });
             case { Kind: StageCommandKind.NextTheme }:
                 return Apply(Settings with { Theme = Settings.Theme.Next() });
+            case { Kind: StageCommandKind.NextSource }:
+                return Apply(Settings with { Source = Settings.Source.Next() });
             case { Kind: StageCommandKind.TogglePacing }:
                 return Apply(Settings with { Pacing = !Settings.Pacing });
             case { Kind: StageCommandKind.Nudge, Seconds: var seconds }:

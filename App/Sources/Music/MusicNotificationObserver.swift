@@ -1,18 +1,20 @@
 import Foundation
 
-/// Receives Music's `playerInfo` notification immediately, even while Apmuly is in
-/// the background (the block-based API lets AppKit hold notifications for inactive apps).
+/// Receives the player apps' change notifications (Music's `playerInfo`, Spotify's
+/// `PlaybackStateChanged`) immediately, even while Apmuly is in the background
+/// (the block-based API lets AppKit hold notifications for inactive apps).
 @MainActor
 final class MusicNotificationObserver: NSObject {
-    private static let name = Notification.Name("com.apple.Music.playerInfo")
     private let onChange: @MainActor () -> Void
 
-    init(onChange: @escaping @MainActor () -> Void) {
+    init(names: [String], onChange: @escaping @MainActor () -> Void) {
         self.onChange = onChange
         super.init()
-        DistributedNotificationCenter.default().addObserver(
-            self, selector: #selector(received(_:)), name: Self.name, object: nil,
-            suspensionBehavior: .deliverImmediately)
+        for name in names {
+            DistributedNotificationCenter.default().addObserver(
+                self, selector: #selector(received(_:)), name: Notification.Name(name), object: nil,
+                suspensionBehavior: .deliverImmediately)
+        }
     }
 
     func invalidate() {

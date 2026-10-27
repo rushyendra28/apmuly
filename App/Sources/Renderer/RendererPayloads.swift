@@ -96,6 +96,8 @@ enum RendererPayload {
         let artist: String
         /// "synced", "loading" or "none" (no timed lyrics: the stage becomes a visualizer).
         let lyrics: String
+        /// The app it's playing in ("Apple Music" / "Spotify"), shown in the stage's frame.
+        let source: String?
     }
 
     struct Frame: Encodable {

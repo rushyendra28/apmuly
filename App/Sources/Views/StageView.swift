@@ -29,7 +29,7 @@ struct StageView: View {
         .overlay(StatusBar(model: model, mode: renderer.mode, theme: renderer.theme, livePacing: renderer.livePacing)
             .opacity(activity.isActive ? 1 : 0)
             .animation(.easeInOut(duration: 0.4), value: activity.isActive), alignment: .bottom)
-        .overlay(PermissionPrompt(error: model.bridgeError))
+        .overlay(PermissionPrompt(error: model.bridgeError, appName: model.source == .spotify ? "Spotify" : "Music"))
         .task {
             model.start()
             renderer.start()
@@ -56,6 +56,7 @@ struct StageView: View {
         case "l", "L": renderer.select(renderer.mode.toggled)
         case "t", "T": renderer.select(renderer.theme.next)
         case "p", "P": renderer.toggleLivePacing()
+        case "s", "S": model.cycleSource()
         default:
             guard let theme = StageTheme.allCases.first(where: { String($0.shortcut) == characters }) else { return false }
             renderer.select(theme)

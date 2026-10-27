@@ -244,6 +244,13 @@ public sealed partial class NowPlayingModel : IDisposable
         {
             return;
         }
+        if (track.SkipLyrics)
+        {
+            // Ads / podcasts: the stage becomes a visualizer.
+            _lyrics[track.Id] = new LyricsLoad.Loaded(new LyricsResult.NotFound());
+            _lyricsVersions[track.Id] = _lyricsVersions.GetValueOrDefault(track.Id) + 1;
+            return;
+        }
         _lyrics[track.Id] = new LyricsLoad.Loading();
         Track(Task.Run(() => LoadLyricsAsync(track), _shutdown));
     }

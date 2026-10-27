@@ -43,7 +43,7 @@ public partial class MainWindow : Window, IDisposable
         _session = new StageSession(new SettingsStore(), _model, _feed, loggers.CreateLogger<StageSession>());
         _host = new StageHost(Stage, _session, loggers.CreateLogger<StageHost>());
         _smtc = new SmtcNowPlaying(loggers.CreateLogger<SmtcNowPlaying>());
-        _poller = new NowPlayingPoller(_smtc, _model, Dispatcher, loggers.CreateLogger<NowPlayingPoller>());
+        _poller = new NowPlayingPoller(_smtc, _model, () => _session.SourcePreference, Dispatcher, loggers.CreateLogger<NowPlayingPoller>());
         _energy = new LoopbackEnergySource(loggers.CreateLogger<LoopbackEnergySource>());
         _frameTimer = new DispatcherTimer(FrameInterval, DispatcherPriority.Render, (_, _) => Tick(), Dispatcher);
         _frameTimer.Stop();
@@ -85,7 +85,7 @@ public partial class MainWindow : Window, IDisposable
             return;
         }
         _energy.EnsureRunning();
-        _host.Post(_feed.Tick(_model, HostClock.Now, _energy.Snapshot()));
+        _host.Post(_feed.Tick(_model, HostClock.Now, _energy.Snapshot(), _session.SourcePreference));
     }
 
     private void ShowFallback(string title, string detail, Uri? link)

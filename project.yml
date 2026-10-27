@@ -37,7 +37,7 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSApplicationCategoryType: public.app-category.music
         NSHumanReadableCopyright: © 2026 rushyendra28. MIT License.
-        NSAppleEventsUsageDescription: Apmuly reads what's playing in Music so it can show lyrics in sync.
+        NSAppleEventsUsageDescription: Apmuly reads what's playing in Music or Spotify so it can show lyrics in sync.
         NSAudioCaptureUsageDescription: Apmuly listens to Music's output so the visuals move to the beat and the lyrics can line up with the singer. Nothing is recorded, saved or sent anywhere.
         NSSpeechRecognitionUsageDescription: Apmuly listens to the song on your Mac to line the lyrics up with the singer. Audio never leaves your Mac.
     entitlements:

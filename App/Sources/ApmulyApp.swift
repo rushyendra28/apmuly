@@ -1,3 +1,4 @@
+import ApmulyCore
 import SwiftUI
 
 @main
@@ -26,6 +27,13 @@ struct ApmulyApp: App {
                 Divider()
                 Button("Toggle Lyrics / Visualizer") { renderer.select(renderer.mode.toggled) }
                     .keyboardShortcut("l", modifiers: .command)
+            }
+            CommandMenu("Source") {
+                ForEach(SourcePreference.allCases, id: \.self) { preference in
+                    Button((model.sourcePreference == preference ? "✓ " : "") + preference.title) { model.selectSource(preference) }
+                }
+                Divider()
+                Button("Next Source") { model.cycleSource() }
             }
             CommandMenu("Theme") {
                 ForEach(StageTheme.allCases) { theme in

@@ -37,3 +37,22 @@ public class StageStatusTests
         Assert.Equal("synced", StageStatus.LyricsState(Loaded(new LyricsResult.Found(LyricsTimeline.Build(LrcParser.Parse("[00:01.00]x"), 10)))));
     }
 }
+
+public class SourceStatusTests
+{
+    [Fact]
+    public void NothingPlayingNamesTheRightApp()
+    {
+        Assert.Equal(StageStatus.NothingPlaying, StageStatus.For(null).Title);
+        Assert.Equal("Open Spotify and play something", StageStatus.For(null, Apmuly.Core.Media.SourcePreference.Spotify).Title);
+        Assert.Equal("Open Apple Music and play something", StageStatus.For(null, Apmuly.Core.Media.SourcePreference.AppleMusic).Title);
+    }
+
+    [Fact]
+    public void AdsShowNoStatus()
+    {
+        var ad = new DeckRender("spotify|x", new TrackInfo("spotify|x", "Advertisement", "", "", 20, "Spotify", SkipLyrics: true),
+                                new LyricsLoad.Loaded(new LyricsResult.NotFound()), 0, true, 1);
+        Assert.Equal(StatusPayload.None, StageStatus.For(ad));
+    }
+}

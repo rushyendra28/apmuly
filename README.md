@@ -5,7 +5,7 @@
 <h1 align="center">Apmuly</h1>
 
 <p align="center">
-  <b>See the song you're playing in Apple Music — on Mac and Windows.</b><br>
+  <b>See the song you're playing in Apple Music or Spotify — on Mac and Windows.</b><br>
   Every word lands the moment it's sung, in three themes coloured by the album art, with emoji for the mood and
   the things it mentions — and songs without lyrics become an audio visualizer.
 </p>
@@ -31,7 +31,8 @@
 
 ## Features
 
-- **Works with the Music app** — open Apmuly and play anything in Apple Music: streaming, your library, playlists.
+- **Works with Apple Music and Spotify** — open Apmuly and play anything in the Apple Music or Spotify desktop app. It
+  follows whichever app is playing, or press **S** (or use the **Source** menu) to pin one.
 - **Lyrics in sync** — time-synced lyrics from [LRCLIB](https://lrclib.net), tracked to the millisecond, through
   pauses, seeks, skips and **AutoMix / crossfade** transitions.
 - **Every word on the singer's beat** — most lyric files only time whole lines, so Apmuly paces the words itself:
@@ -81,7 +82,7 @@ processor" → `arm64`. Checksums: `Apmuly-x.y.z.dmg.sha256` (Mac) and `SHA256SU
 | | Mac | Windows |
 |---|---|---|
 | **System** | macOS 12 (Monterey) or later — Apple silicon or Intel | Windows 10 (version 1809) or later, or Windows 11 — x64 or ARM64 |
-| **Music** | The Music app with an Apple Music subscription, or songs in your library | [Apple Music for Windows](https://apps.microsoft.com/detail/9pfhdd62mxs1) (or any player that shows in Windows' media controls) |
+| **Music** | The Music app (Apple Music or your library) or the Spotify desktop app | [Apple Music for Windows](https://apps.microsoft.com/detail/9pfhdd62mxs1) or the Spotify desktop app |
 | **Internet** | To look up lyrics | To look up lyrics |
 | **Also needed** | — | Microsoft Edge WebView2 Runtime (built into Windows 11 and up-to-date Windows 10) |
 | **Optional** | [Apple Intelligence](https://support.apple.com/en-us/121115) (macOS 26, Apple silicon) for the best emoji; otherwise a simpler built-in analysis | — |
@@ -123,7 +124,7 @@ The first time you play a song, macOS asks for these:
 
 | Prompt | Why | Required? |
 |---|---|---|
-| **"Apmuly" wants access to control "Music"** | To read which song is playing and where you are in it | **Yes** — click **OK** |
+| **"Apmuly" wants access to control "Music"** / **"Spotify"** | To read which song is playing and where you are in it (asked for each app the first time you use it) | **Yes** — click **OK** |
 | **Capture audio from other apps** (macOS 14.2+) | So the visuals move to the beat, words start when the singer does, the visualizer has a spectrum, and auto-sync can hear the singer. Nothing is recorded or saved. | Recommended |
 | **Speech recognition** (if asked) | Auto-sync and singer-paced words, on-device only | Optional |
 
@@ -158,6 +159,7 @@ building from source and what differs from the Mac version.
 | **1** / **2** / **3** (or **⌘1**–**⌘3**) | **Kinetic Depth** / **Grunge** / **Paper Brush** theme (remembered) |
 | **T** or **⌘T** | Next theme |
 | **P** | Turn live singer pacing off / on (to compare; remembered) |
+| **S** | Source: Automatic (whichever app is playing) → Apple Music → Spotify (remembered) |
 | **]** / **[** | Show lyrics later / earlier by 0.05 s (remembered per song) |
 | **0** | Reset that adjustment |
 | **R** | Retry if lyrics failed to load |
@@ -191,6 +193,7 @@ is your own adjustment.
 | "No lyrics found" / visualizer instead of lyrics | LRCLIB has no synced lyrics for that track (common for remixes, sped-up edits, classical). |
 | Lyrics a little early or late | Press **]** or **[**. Auto-sync also corrects this after a few lines when it can hear the vocals clearly. |
 | Words run ahead of or behind the singer | Live pacing follows the singer's vocal onsets; press **P** to compare with it off. On the Mac (14.2+) Apmuly also learns the singer's timing, so choruses and later plays get it right from the start. |
+| Spotify not detected | Use the Spotify **desktop app** (the web player and playing on another device via Connect aren't visible). Press **S** to check the source isn't pinned to Apple Music. |
 | Lyrics briefly wrong after skipping | They catch up within a second; Apmuly checks Music twice a second. |
 
 ## Build from source

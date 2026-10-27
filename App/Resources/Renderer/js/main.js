@@ -198,7 +198,8 @@ async function boot() {
     setTrack(json) {
       const t = parse(json);
       if (!t?.trackID || typeof t.title !== 'string') return;
-      remember(engine.tracks, t.trackID, { title: t.title, artist: String(t.artist ?? ''), lyrics: String(t.lyrics ?? 'loading') });
+      const source = typeof t.source === 'string' ? t.source.slice(0, 40) : '';
+      remember(engine.tracks, t.trackID, { title: t.title, artist: String(t.artist ?? ''), lyrics: String(t.lyrics ?? 'loading'), source });
     },
     setArtwork(json) {
       const a = parse(json);

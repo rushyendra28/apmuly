@@ -82,6 +82,23 @@ public class StageSessionTests
     }
 
     [Fact]
+    public void SCyclesTheFollowedPlayerAndPersists()
+    {
+        var (session, h) = Make();
+        using (h)
+        {
+            Assert.Equal(Apmuly.Core.Media.SourcePreference.Auto, session.SourcePreference);
+            Assert.Empty(session.HandleKey("s"));
+            Assert.Equal(Apmuly.Core.Media.SourcePreference.AppleMusic, session.SourcePreference);
+            session.HandleKey("S");
+            Assert.Equal(Apmuly.Core.Media.SourcePreference.Spotify, new SettingsStore(h.SettingsPath).Load().Source);
+            Assert.Contains("\"source\": \"spotify\"", File.ReadAllText(h.SettingsPath));
+            session.HandleKey("s");
+            Assert.Equal(Apmuly.Core.Media.SourcePreference.Auto, session.SourcePreference);
+        }
+    }
+
+    [Fact]
     public void NudgeKeysAdjustTheCurrentSong()
     {
         var (session, h) = Make();

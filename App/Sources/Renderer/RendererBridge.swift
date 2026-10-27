@@ -140,7 +140,8 @@ final class RendererBridge: NSObject, ObservableObject {
         }
         if let track = deck.track, sentTrackStates[id] != lyricsState {
             sentTrackStates[id] = lyricsState
-            send("setTrack", RendererPayload.Track(trackID: id, title: track.title, artist: track.artist, lyrics: lyricsState))
+            send("setTrack", RendererPayload.Track(trackID: id, title: track.title, artist: track.artist, lyrics: lyricsState,
+                                                         source: model.source?.displayName))
         }
         let lyricsVersion = model.lyricsVersions[id] ?? 0
         if sentLyricsVersions[id] != lyricsVersion, case .loaded(.lyrics(let doc)) = deck.lyrics, doc.timing != .unsynced {

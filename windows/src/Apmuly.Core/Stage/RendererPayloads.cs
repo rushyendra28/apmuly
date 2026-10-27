@@ -71,7 +71,8 @@ public sealed record TrackPayload(
     [property: JsonPropertyName("trackID")] string TrackId,
     [property: JsonPropertyName("title")] string Title,
     [property: JsonPropertyName("artist")] string Artist,
-    [property: JsonPropertyName("lyrics")] string Lyrics);
+    [property: JsonPropertyName("lyrics")] string Lyrics,
+    [property: JsonPropertyName("source")] string? Source = null);
 
 /// <summary>What the page shows when there is nothing else to display; empty strings clear it.</summary>
 public sealed record StatusPayload(

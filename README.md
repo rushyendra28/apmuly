@@ -11,7 +11,16 @@
 </p>
 
 <p align="center">
-  <a href="#download">Download</a> ·
+  <a href="https://github.com/rushyendra28/apmuly/releases/latest/download/Apmuly-1.3.0.dmg"><b>⬇ Download for Mac</b></a>
+  &nbsp;·&nbsp;
+  <a href="https://github.com/rushyendra28/apmuly/releases/latest/download/Apmuly-Windows-1.3.0-x64.zip"><b>⬇ Download for Windows</b></a>
+  <br>
+  <sub>Version 1.3.0 · <a href="https://github.com/rushyendra28/apmuly/releases/latest/download/Apmuly-Windows-1.3.0-arm64.zip">Windows on ARM</a>
+  · <a href="https://github.com/rushyendra28/apmuly/releases/latest">all downloads and release notes</a></sub>
+</p>
+
+<p align="center">
+  <a href="#download">Which file?</a> ·
   <a href="#install-on-mac">Install on Mac</a> ·
   <a href="#install-on-windows">Install on Windows</a> ·
   <a href="#using-apmuly">Use</a> ·
@@ -55,7 +64,7 @@
 - **A printed frame** — every theme shows the song and artist, a running timer and print marks around the edges.
 - **Album-art colours** — every theme takes its colours from the song's artwork and cross-fades between songs.
 - **Emoji that fit the song** — a mood emoji for each expressive line and emoji for the things it mentions
-  (🌙 🚗 💃 …), worked out privately on your computer.
+  (🌙 🚗 💃 …), worked out privately on your computer. Not your thing? Press **E** to turn them off.
 - **Any window size** — words, emoji and the visualizer re-fit to wide, tall, small or full-screen windows.
 - **Visualizer** — songs without lyrics (and instrumental breaks) become a spectrum ring driven by the music, with
   the song title; Grunge and Paper Brush show it their own way.
@@ -229,8 +238,9 @@ Mac and Windows ship in the same GitHub release:
 
 1. Set the version in [`Config/Base.xcconfig`](Config/Base.xcconfig) (`MARKETING_VERSION`) and
    [`windows/Directory.Build.props`](windows/Directory.Build.props) (`Version`).
-2. `make release` builds a universal Mac app and creates `dist/Apmuly-<version>.dmg` plus a `.sha256` checksum.
-3. Push a tag `v<version>` and create the release for it with the DMG and checksum attached. The
+2. Update the version in the README's download links at the top.
+3. `make release` builds a universal Mac app and creates `dist/Apmuly-<version>.dmg` plus a `.sha256` checksum.
+4. Push a tag `v<version>` and create the release for it with the DMG and checksum attached. The
    [Windows workflow](.github/workflows/windows.yml) builds, tests and attaches `Apmuly-Windows-<version>-x64.zip`,
    `-arm64.zip` and `SHA256SUMS-windows.txt` to that same release.
 

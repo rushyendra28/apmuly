@@ -11,13 +11,13 @@ public static class MetadataNormalizer
     public const int MaxFieldLength = 512;
     private const string AppleMusicSeparator = " — ";
 
-    public static MediaMetadata Normalize(string? title, string? artist, string? album)
+    public static MediaMetadata Normalize(string? title, string? artist, string? album, bool splitArtistAlbum = true)
     {
         var cleanTitle = Clean(title);
         var cleanArtist = Clean(artist);
         var cleanAlbum = Clean(album);
         var split = cleanArtist.IndexOf(AppleMusicSeparator, StringComparison.Ordinal);
-        if (cleanAlbum.Length == 0 && split > 0)
+        if (splitArtistAlbum && cleanAlbum.Length == 0 && split > 0)
         {
             cleanAlbum = cleanArtist[(split + AppleMusicSeparator.Length)..].Trim();
             cleanArtist = cleanArtist[..split].Trim();

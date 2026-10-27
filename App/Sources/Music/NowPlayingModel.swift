@@ -77,7 +77,10 @@ final class NowPlayingModel: ObservableObject {
     private static let latencyCheckInterval: TimeInterval = 5
     private static let feedInterval: UInt64 = 250_000_000
 
-    private let bridge: MusicBridge
+    private let bridge: PlayerRouter
+    /// The app being followed and the user's choice (Automatic / Apple Music / Spotify).
+    @Published private(set) var source: MediaSource?
+    @Published private(set) var sourcePreference: SourcePreference
     private let lyricsService: LyricsService
     private let defaults: UserDefaults
     private var pollTask: Task<Void, Never>?
@@ -88,9 +91,10 @@ final class NowPlayingModel: ObservableObject {
     private var health = PollHealth()
     private var lyricAttempts: [String: Int] = [:]
 
-    init(bridge: MusicBridge = MusicBridge(), lyricsService: LyricsService = LyricsService(),
+    init(bridge: PlayerRouter = PlayerRouter(), lyricsService: LyricsService = LyricsService(),
          defaults: UserDefaults = .standard) {
         self.bridge = bridge
+        sourcePreference = bridge.preference
         self.lyricsService = lyricsService
         self.defaults = defaults
     }
@@ -107,8 +111,8 @@ final class NowPlayingModel: ObservableObject {
                 try? await Task.sleep(nanoseconds: playing ? Self.playingInterval : Self.idleInterval)
             }
         }
-        // Music posts this on play/pause/skip and at the switch point of an AutoMix transition.
-        observer = MusicNotificationObserver { [weak self] in
+        // Music posts this on play/pause/skip and at the switch point of an AutoMix transition; Spotify on play/pause/skip.
+        observer = MusicNotificationObserver(names: bridge.bridges.values.map(\.app.notification)) { [weak self] in
             self?.health.notifications += 1
             Task { await self?.pollNow() }
         }
@@ -140,8 +144,26 @@ final class NowPlayingModel: ObservableObject {
 
     // MARK: - Polling
 
+    /// Cycles Automatic → Apple Music → Spotify (remembered).
+    func cycleSource() {
+        bridge.setPreference(bridge.preference.next)
+        sourcePreference = bridge.preference
+        Task { await pollNow() }
+    }
+
+    func selectSource(_ preference: SourcePreference) {
+        bridge.setPreference(preference)
+        sourcePreference = preference
+        Task { await pollNow() }
+    }
+
     func pollNow() async {
-        switch await bridge.poll() {
+        let result = await bridge.poll()
+        if source != bridge.current {
+            source = bridge.current
+            audioTap.targetBundleID = bridge.currentApp?.bundleID ?? PlayerApp.music.bundleID
+        }
+        switch result {
         case .failure(let error):
             handleFailure(error)
         case .success(let poll):

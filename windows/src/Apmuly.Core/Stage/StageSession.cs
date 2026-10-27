@@ -1,3 +1,4 @@
+using Apmuly.Core.Media;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -11,12 +12,12 @@ public sealed partial class StageSession
 {
     /// <summary>
     /// forwardKeys: the page sends key presses; sheet: the page draws its own lyrics sheet (WPF can't overlay
-    /// WebView2); pacing: live singer pacing, as the user last set it.
+    /// WebView2); pacing / emoji: live singer pacing and emoji, as the user last set them.
     /// </summary>
     public static OptionsPayload OptionsFor(StageSettings settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
-        return new OptionsPayload(ForwardKeys: true, Sheet: true, Pacing: settings.Pacing);
+        return new OptionsPayload(ForwardKeys: true, Sheet: true, Pacing: settings.Pacing, Emoji: settings.Emoji);
     }
 
     private readonly SettingsStore _store;
@@ -34,6 +35,9 @@ public sealed partial class StageSession
     }
 
     public StageSettings Settings { get; private set; }
+
+    /// <summary>The player preference, read by the now-playing poller each poll.</summary>
+    public SourcePreference SourcePreference => Settings.Source;
 
     /// <summary>True once the page has said "ready" (calls before that are dropped by the host).</summary>
     public bool IsReady { get; private set; }
@@ -73,6 +77,10 @@ public sealed partial class StageSession
                 return Apply(Settings with { Theme = theme });
             case { Kind: StageCommandKind.NextTheme }:
                 return Apply(Settings with { Theme = Settings.Theme.Next() });
+            case { Kind: StageCommandKind.NextSource }:
+                return Apply(Settings with { Source = Settings.Source.Next() });
+            case { Kind: StageCommandKind.ToggleEmoji }:
+                return Apply(Settings with { Emoji = !Settings.Emoji });
             case { Kind: StageCommandKind.TogglePacing }:
                 return Apply(Settings with { Pacing = !Settings.Pacing });
             case { Kind: StageCommandKind.Nudge, Seconds: var seconds }:
@@ -100,7 +108,7 @@ public sealed partial class StageSession
         {
             calls.Add(HostCall.SetMode(updated.Mode));
         }
-        if (updated.Pacing != Settings.Pacing)
+        if (updated.Pacing != Settings.Pacing || updated.Emoji != Settings.Emoji)
         {
             calls.Add(HostCall.SetOptions(OptionsFor(updated)));
         }

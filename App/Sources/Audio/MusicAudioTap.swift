@@ -65,6 +65,10 @@ final class MusicAudioTap: @unchecked Sendable {
     private var runningPID: pid_t?
     private var failedPID: pid_t?
     private var lastCheck = Date.distantPast
+    /// The player app whose audio is tapped (Music or Spotify); changing it re-targets the tap.
+    var targetBundleID = PlayerApp.music.bundleID {
+        didSet { if targetBundleID != oldValue { lastCheck = .distantPast } }
+    }
     private var lastFailure = Date.distantPast
 
     deinit {
@@ -84,7 +88,7 @@ final class MusicAudioTap: @unchecked Sendable {
         guard #available(macOS 14.2, *) else { return }
         guard Date().timeIntervalSince(lastCheck) >= Self.checkInterval else { return }
         lastCheck = Date()
-        let pid = NSRunningApplication.runningApplications(withBundleIdentifier: MusicBridge.bundleID).first?.processIdentifier
+        let pid = NSRunningApplication.runningApplications(withBundleIdentifier: targetBundleID).first?.processIdentifier
         guard pid != runningPID else { return }
         stop()
         guard let pid else { return }
@@ -93,7 +97,7 @@ final class MusicAudioTap: @unchecked Sendable {
             try start(pid: pid)
             runningPID = pid
             failedPID = nil
-            Self.logger.info("Audio tap started for Music (pid \(pid))")
+            Self.logger.info("Audio tap started for \(self.targetBundleID, privacy: .public) (pid \(pid))")
         } catch {
             failedPID = pid
             lastFailure = Date()

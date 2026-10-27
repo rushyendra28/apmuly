@@ -138,6 +138,26 @@ public class NowPlayingModelTests
     }
 
     [Fact]
+    public void AdsSkipTheLyricsLookup()
+    {
+        var provider = FakeProvider.Returning(Synced);
+        using var h = new ModelHarness(provider);
+        var ad = new TrackInfo("spotify|ad", "Advertisement", "", "", 20, "Spotify", SkipLyrics: true);
+        h.Play(ad, 1, 0);
+        Assert.IsType<LyricsResult.NotFound>(Assert.IsType<LyricsLoad.Loaded>(h.Model.Render(0).Current!.Lyrics).Result);
+        Assert.Equal(0, provider.Calls);
+    }
+
+    [Fact]
+    public void SetTrackCarriesTheSourceName()
+    {
+        using var h = new ModelHarness(FakeProvider.Returning(null));
+        h.Play(ModelHarness.Track() with { Source = "Spotify" }, 1, 0);
+        var setTrack = new StageFeed().Tick(h.Model, 0.1, null).First(c => c.Fn == "setTrack");
+        Assert.Equal("Spotify", System.Text.Json.JsonDocument.Parse(setTrack.Arg).RootElement.GetProperty("source").GetString());
+    }
+
+    [Fact]
     public void StoppingClearsTheCurrentDeck()
     {
         using var h = new ModelHarness(FakeProvider.Returning(null));

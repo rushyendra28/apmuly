@@ -38,6 +38,7 @@ public class StageFeedTests
         var calls = feed.Tick(h.Model, 0.2, null);
         Assert.Equal(["setTrack", "setLyrics", "setPalette", "setInsights", "setArtwork", "setStatus", "setFrame"], Fns(calls));
         Assert.Equal("synced", Arg(calls, "setTrack").GetProperty("lyrics").GetString());
+        Assert.False(Arg(calls, "setTrack").TryGetProperty("source", out _)); // harness track has no source
         Assert.Equal("", Arg(calls, "setStatus").GetProperty("title").GetString());
 
         Assert.Equal(["setFrame"], Fns(feed.Tick(h.Model, 0.3, null)));
@@ -136,6 +137,6 @@ public class StageFeedTests
         var theme = JsonDocument.Parse(HostCall.SetTheme(StageTheme.Paper).ToJson()).RootElement;
         Assert.Equal("paper", theme.GetProperty("arg").GetString());
         var options = HostCall.SetOptions(StageSession.OptionsFor(StageSettings.Default with { Pacing = false })).Arg;
-        Assert.Equal("""{"forwardKeys":true,"sheet":true,"pacing":false}""", options);
+        Assert.Equal("""{"forwardKeys":true,"sheet":true,"pacing":false,"emoji":true}""", options);
     }
 }

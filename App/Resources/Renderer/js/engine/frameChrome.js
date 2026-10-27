@@ -114,7 +114,7 @@ export class FrameChrome {
     place('title', info?.title ?? 'Apmuly', left, halfH, true);
     place('artist', info?.artist || ' ', left, halfH - size * 1.25, true);
     place('time', position === null ? '--:--' : clock(position), halfW - mark * 1.4, -halfH, false, true);
-    place('brand', 'APMULY / LYRICS', left, -halfH, true);
+    place('brand', info?.source ? `APMULY / ${info.source.toUpperCase()}` : 'APMULY / LYRICS', left, -halfH, true);
 
     const vertical = place('vertical', (info?.title ?? 'Apmuly').toUpperCase(), 0, 0, true);
     const verticalSize = unit * VERTICAL_SHARE;

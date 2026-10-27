@@ -1,6 +1,6 @@
 # Apmuly for Windows
 
-Synced lyrics for the song playing in **Apple Music for Windows**, drawn on the same 3D stage as the Mac app.
+Synced lyrics for the song playing in **Apple Music for Windows** or the **Spotify** desktop app, drawn on the same 3D stage as the Mac app.
 The stage is the shared three.js renderer in `App/Resources/Renderer/`, hosted unchanged in Microsoft Edge
 **WebView2**. Everything else is a C# / .NET 10 / WPF port of the Mac app's Swift core.
 
@@ -17,11 +17,12 @@ The stage is the shared three.js renderer in `App/Resources/Renderer/`, hosted u
 
 The build is not code-signed yet, so SmartScreen may warn on first launch ("More info" → "Run anyway").
 
-Requirements: Windows 10 1809 or later (Windows 11 recommended), x64 or ARM64.
+Requirements: Windows 10 1809 or later (Windows 11 recommended), x64 or ARM64, and Apple Music for Windows
+or the Spotify desktop app.
 
 ## Use
 
-Start Apple Music, play a song, and open Apmuly. Lyrics come from [LRCLIB](https://lrclib.net) (free, no account).
+Start Apple Music or Spotify, play a song, and open Apmuly. Lyrics come from [LRCLIB](https://lrclib.net) (free, no account).
 
 | Key | Action |
 | --- | --- |
@@ -32,6 +33,8 @@ Start Apple Music, play a song, and open Apmuly. Lyrics come from [LRCLIB](https
 | `0` | Reset this song's nudge |
 | `R` | Retry lyrics after a failure |
 | `P` | Turn live singer pacing on or off (remembered; on by default) |
+| `E` | Show or hide emoji (remembered; on by default) |
+| `S` | Player to follow: Auto → Apple Music → Spotify → Auto (remembered) |
 
 Themes:
 
@@ -53,7 +56,7 @@ Everything lives under `%LOCALAPPDATA%\Apmuly`:
 
 | Path | What |
 | --- | --- |
-| `settings.json` | Theme, mode and live singer pacing |
+| `settings.json` | Theme, mode, live singer pacing, emoji and the followed player |
 | `offsets.json` | Per-song lyric nudges |
 | `Lyrics\` | LRCLIB results cache (one hashed JSON file per song; "not found" is re-checked after 3 days) |
 | `Timing\` | Learned word timings (reserved; nothing writes it on Windows yet) |
@@ -64,9 +67,12 @@ Uninstall: delete the unzipped folder and `%LOCALAPPDATA%\Apmuly`.
 
 ## How it works
 
-- **Now playing:** Windows' System Media Transport Controls (the media flyout data). Apmuly follows the
-  Apple Music session when there is one, otherwise whatever Windows considers the current session.
-  It listens for change events and also polls once a second.
+- **Now playing:** Windows' System Media Transport Controls (the media flyout data). In **Auto**, Apmuly
+  follows whichever of Apple Music and Spotify is playing (the one that started or changed track most
+  recently if both are), and stays on the last one while both are paused; other apps are only followed when
+  neither player is open. Choosing Apple Music or Spotify with `S` pins that player. Each player's songs
+  have their own IDs, so nudges never mix. Spotify ads are shown as a plain visualizer. Apmuly listens for
+  change events and also polls once a second.
 - **Timing:** SMTC reports a position plus the time it was valid; Apmuly extrapolates while playing,
   re-anchors on updates, snaps on seeks and smooths small drift (the Mac's `PlaybackTracker`).
 - **Lyrics:** cache → LRCLIB exact lookup → ranked search, with automatic retries (5 s, 20 s, 60 s) when
@@ -116,3 +122,10 @@ windows/
 
 CI: `.github/workflows/windows.yml` runs the tests and publishes x64 and ARM64 zips on `windows-latest`;
 `v*` tags attach them to the GitHub release.
+
+## Known limitations
+
+- Spotify's web player (in a browser) and Spotify Connect (playing on another device from your phone)
+  may not be detected: Apmuly needs the Spotify desktop app playing on this PC.
+- Spotify ads are recognised by their title ("Advertisement" / "Spotify") or by being short with no artist;
+  a short track without an artist credit may be treated as an ad.

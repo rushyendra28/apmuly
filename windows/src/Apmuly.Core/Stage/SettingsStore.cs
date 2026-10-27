@@ -1,12 +1,15 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Apmuly.Core.Media;
 using Apmuly.Core.Provider;
 
 namespace Apmuly.Core.Stage;
 
 /// <summary>The stage choices that survive restarts.</summary>
 /// <param name="Pacing">Live singer pacing in the page (on by default).</param>
-public sealed record StageSettings(StageTheme Theme, StageMode Mode, bool Pacing = true)
+/// <param name="Source">Which player to follow.</param>
+public sealed record StageSettings(StageTheme Theme, StageMode Mode, bool Pacing = true,
+                                   SourcePreference Source = SourcePreference.Auto, bool Emoji = true)
 {
     public static readonly StageSettings Default = new(StageTheme.Kinetic, StageMode.Visualizer, Pacing: true);
 }
@@ -19,6 +22,8 @@ public sealed class SettingsStore
         [JsonPropertyName("theme")] public string? Theme { get; set; }
         [JsonPropertyName("mode")] public string? Mode { get; set; }
         [JsonPropertyName("pacing")] public bool? Pacing { get; set; }
+        [JsonPropertyName("source")] public string? Source { get; set; }
+        [JsonPropertyName("emoji")] public bool? Emoji { get; set; }
     }
 
     private static readonly JsonSerializerOptions Options = new() { WriteIndented = true, MaxDepth = 4 };
@@ -44,7 +49,9 @@ public sealed class SettingsStore
             return new StageSettings(
                 StageOptionNames.ParseTheme(document?.Theme) ?? StageSettings.Default.Theme,
                 StageOptionNames.ParseMode(document?.Mode) ?? StageSettings.Default.Mode,
-                document?.Pacing ?? StageSettings.Default.Pacing);
+                document?.Pacing ?? StageSettings.Default.Pacing,
+                MediaSources.ParsePreference(document?.Source) ?? StageSettings.Default.Source,
+                document?.Emoji ?? StageSettings.Default.Emoji);
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or JsonException)
         {
@@ -56,7 +63,7 @@ public sealed class SettingsStore
     public bool Save(StageSettings settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
-        var document = new Document { Theme = settings.Theme.WireName(), Mode = settings.Mode.WireName(), Pacing = settings.Pacing };
+        var document = new Document { Theme = settings.Theme.WireName(), Mode = settings.Mode.WireName(), Pacing = settings.Pacing, Source = settings.Source.WireName(), Emoji = settings.Emoji };
         try
         {
             FileNames.WriteAtomically(_path, JsonSerializer.SerializeToUtf8Bytes(document, Options));

@@ -1,5 +1,6 @@
 using Apmuly.Core.Audio;
 using Apmuly.Core.Lyrics;
+using Apmuly.Core.Media;
 using Apmuly.Core.Provider;
 using Apmuly.Core.Visuals;
 
@@ -30,7 +31,8 @@ public sealed class StageFeed
         _sentStatus = null;
     }
 
-    public IReadOnlyList<HostCall> Tick(NowPlayingModel model, double hostTime, EnergySnapshot? energy)
+    public IReadOnlyList<HostCall> Tick(NowPlayingModel model, double hostTime, EnergySnapshot? energy,
+                                       SourcePreference preference = SourcePreference.Auto)
     {
         ArgumentNullException.ThrowIfNull(model);
         var snapshot = model.Snapshot(hostTime);
@@ -49,7 +51,7 @@ public sealed class StageFeed
         {
             calls.AddRange(Assets(deck.Deck, deck.Assets));
         }
-        var status = StageStatus.For(snapshot.Current?.Deck);
+        var status = StageStatus.For(snapshot.Current?.Deck, preference);
         if (status != _sentStatus)
         {
             _sentStatus = status;
@@ -67,7 +69,8 @@ public sealed class StageFeed
         if (deck.Track is { } track && _sentTrackStates.GetValueOrDefault(id) != lyricsState)
         {
             _sentTrackStates[id] = lyricsState;
-            calls.Add(HostCall.SetTrack(new TrackPayload(id, track.Title, track.Artist, lyricsState)));
+            calls.Add(HostCall.SetTrack(new TrackPayload(id, track.Title, track.Artist, lyricsState,
+                track.Source.Length > 0 ? track.Source : null)));
         }
         if (_sentLyricsVersions.TryGetValue(id, out var sentVersion) is var known && (!known || sentVersion != assets.LyricsVersion)
             && deck.Lyrics is LyricsLoad.Loaded { Result: LyricsResult.Found found } && found.Document.Timing != LyricsTiming.Unsynced)

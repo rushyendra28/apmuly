@@ -13,7 +13,7 @@ internal sealed record SmtcRead(MediaReading Reading, IRandomAccessStreamReferen
 
 /// <summary>
 /// Reads "now playing" from Windows' System Media Transport Controls (the media flyout data).
-/// Follows Apple Music for Windows when it has a session, else the system's current session.
+/// Follows Apple Music for Windows or Spotify (see <see cref="SourceSelector"/>), else the system's current session.
 /// <see cref="Changed"/> fires (on any thread) when the sessions, metadata, playback or timeline change.
 /// </summary>
 internal sealed partial class SmtcNowPlaying : IDisposable
@@ -21,6 +21,8 @@ internal sealed partial class SmtcNowPlaying : IDisposable
     private readonly ILogger _logger;
     private GlobalSystemMediaTransportControlsSessionManager? _manager;
     private GlobalSystemMediaTransportControlsSession? _watched;
+    private readonly SessionActivity _activity = new();
+    private MediaSource? _followed;
 
     public SmtcNowPlaying(ILogger<SmtcNowPlaying> logger)
     {
@@ -44,7 +46,7 @@ internal sealed partial class SmtcNowPlaying : IDisposable
     }
 
     /// <summary>The followed session's state, or null when nothing can be followed.</summary>
-    public async Task<SmtcRead?> ReadAsync()
+    public async Task<SmtcRead?> ReadAsync(SourcePreference preference)
     {
         if (_manager is null)
         {
@@ -52,7 +54,8 @@ internal sealed partial class SmtcNowPlaying : IDisposable
         }
         try
         {
-            var session = PickSession(_manager);
+            var session = await PickSessionAsync(_manager, preference);
+            _followed = session is null ? _followed : MediaSources.Classify(session.SourceAppUserModelId);
             Watch(session);
             if (session is null)
             {
@@ -78,12 +81,24 @@ internal sealed partial class SmtcNowPlaying : IDisposable
         }
     }
 
-    private static GlobalSystemMediaTransportControlsSession? PickSession(GlobalSystemMediaTransportControlsSessionManager manager)
+    private async Task<GlobalSystemMediaTransportControlsSession?> PickSessionAsync(
+        GlobalSystemMediaTransportControlsSessionManager manager, SourcePreference preference)
     {
         var sessions = manager.GetSessions();
-        var ids = sessions.Select(s => (string?)s.SourceAppUserModelId).ToArray();
-        var current = manager.GetCurrentSession();
-        var index = SessionPicker.Pick(ids, current?.SourceAppUserModelId);
+        var now = HostClock.Now;
+        var states = new List<SessionState>(sessions.Count);
+        foreach (var session in sessions)
+        {
+            var appId = session.SourceAppUserModelId ?? string.Empty;
+            var playing = StateOf(session.GetPlaybackInfo()?.PlaybackStatus) == PlayerState.Playing;
+            // Track changes only matter between playing players; read titles just for those.
+            var track = playing && MediaSources.Classify(appId) != MediaSource.Other
+                ? (await session.TryGetMediaPropertiesAsync())?.Title
+                : null;
+            states.Add(_activity.Observe(appId, playing, track, now));
+        }
+        _activity.Retain(states.Select(s => s.AppId));
+        var index = SourceSelector.Pick(states, preference, _followed, manager.GetCurrentSession()?.SourceAppUserModelId);
         return index is { } i ? sessions[i] : null;
     }
 

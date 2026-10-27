@@ -1,3 +1,4 @@
+import ApmulyCore
 import SwiftUI
 
 @main
@@ -27,6 +28,13 @@ struct ApmulyApp: App {
                 Button("Toggle Lyrics / Visualizer") { renderer.select(renderer.mode.toggled) }
                     .keyboardShortcut("l", modifiers: .command)
             }
+            CommandMenu("Source") {
+                ForEach(SourcePreference.allCases, id: \.self) { preference in
+                    Button((model.sourcePreference == preference ? "✓ " : "") + preference.title) { model.selectSource(preference) }
+                }
+                Divider()
+                Button("Next Source") { model.cycleSource() }
+            }
             CommandMenu("Theme") {
                 ForEach(StageTheme.allCases) { theme in
                     Button(theme.title) { renderer.select(theme) }
@@ -37,6 +45,7 @@ struct ApmulyApp: App {
                     .keyboardShortcut("t", modifiers: .command)
                 Divider()
                 Button(renderer.livePacing ? "Turn Off Live Singer Pacing" : "Turn On Live Singer Pacing") { renderer.toggleLivePacing() }
+                Button(renderer.showEmoji ? "Hide Emoji" : "Show Emoji") { renderer.toggleEmoji() }
             }
         }
     }

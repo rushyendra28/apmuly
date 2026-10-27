@@ -5,7 +5,10 @@ namespace Apmuly.Core.Provider;
 /// <summary>A track as reported by the player.</summary>
 /// <param name="Id">Stable identifier (see <see cref="Media.TrackIdentity"/>).</param>
 /// <param name="Duration">Seconds; 0 when unknown.</param>
-public sealed record TrackInfo(string Id, string Title, string Artist, string Album, double Duration);
+/// <param name="Source">Player name for captions ("Apple Music", "Spotify"), or empty.</param>
+/// <param name="SkipLyrics">Ads and podcasts: show the visualizer, don't look up lyrics.</param>
+public sealed record TrackInfo(string Id, string Title, string Artist, string Album, double Duration,
+                               string Source = "", bool SkipLyrics = false);
 
 /// <summary>A lyrics record from a provider (shape matches LRCLIB's JSON).</summary>
 public sealed record LyricsCandidate(

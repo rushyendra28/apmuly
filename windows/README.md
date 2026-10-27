@@ -33,6 +33,7 @@ Start Apple Music or Spotify, play a song, and open Apmuly. Lyrics come from [LR
 | `0` | Reset this song's nudge |
 | `R` | Retry lyrics after a failure |
 | `P` | Turn live singer pacing on or off (remembered; on by default) |
+| `E` | Show or hide emoji (remembered; on by default) |
 | `S` | Player to follow: Auto → Apple Music → Spotify → Auto (remembered) |
 
 Themes:
@@ -55,7 +56,7 @@ Everything lives under `%LOCALAPPDATA%\Apmuly`:
 
 | Path | What |
 | --- | --- |
-| `settings.json` | Theme, mode, live singer pacing and the followed player |
+| `settings.json` | Theme, mode, live singer pacing, emoji and the followed player |
 | `offsets.json` | Per-song lyric nudges |
 | `Lyrics\` | LRCLIB results cache (one hashed JSON file per song; "not found" is re-checked after 3 days) |
 | `Timing\` | Learned word timings (reserved; nothing writes it on Windows yet) |

@@ -159,6 +159,7 @@ building from source and what differs from the Mac version.
 | **1** / **2** / **3** (or **⌘1**–**⌘3**) | **Kinetic Depth** / **Grunge** / **Paper Brush** theme (remembered) |
 | **T** or **⌘T** | Next theme |
 | **P** | Turn live singer pacing off / on (to compare; remembered) |
+| **E** | Emoji on / off (remembered) |
 | **S** | Source: Automatic (whichever app is playing) → Apple Music → Spotify (remembered) |
 | **]** / **[** | Show lyrics later / earlier by 0.05 s (remembered per song) |
 | **0** | Reset that adjustment |

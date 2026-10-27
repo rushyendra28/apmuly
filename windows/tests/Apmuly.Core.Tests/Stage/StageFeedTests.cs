@@ -137,6 +137,6 @@ public class StageFeedTests
         var theme = JsonDocument.Parse(HostCall.SetTheme(StageTheme.Paper).ToJson()).RootElement;
         Assert.Equal("paper", theme.GetProperty("arg").GetString());
         var options = HostCall.SetOptions(StageSession.OptionsFor(StageSettings.Default with { Pacing = false })).Arg;
-        Assert.Equal("""{"forwardKeys":true,"sheet":true,"pacing":false}""", options);
+        Assert.Equal("""{"forwardKeys":true,"sheet":true,"pacing":false,"emoji":true}""", options);
     }
 }

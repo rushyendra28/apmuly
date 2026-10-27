@@ -57,6 +57,7 @@ struct StageView: View {
         case "t", "T": renderer.select(renderer.theme.next)
         case "p", "P": renderer.toggleLivePacing()
         case "s", "S": model.cycleSource()
+        case "e", "E": renderer.toggleEmoji()
         default:
             guard let theme = StageTheme.allCases.first(where: { String($0.shortcut) == characters }) else { return false }
             renderer.select(theme)

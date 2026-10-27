@@ -120,7 +120,7 @@ struct StatusBar: View {
             Spacer()
             Text(mode == .lyrics ? mode.title : theme.title)
             Text(syncLabel).monospacedDigit()
-            Text("L lyrics · 1–\(StageTheme.allCases.count) or T theme · P live pacing · S source · [ ] nudge · 0 reset").foregroundStyle(.white.opacity(0.5))
+            Text("L lyrics · 1–\(StageTheme.allCases.count) or T theme · P live pacing · E emoji · S source · [ ] nudge · 0 reset").foregroundStyle(.white.opacity(0.5))
         }
         .font(.system(size: 12, weight: .medium, design: .rounded))
         .foregroundStyle(.white.opacity(0.8))

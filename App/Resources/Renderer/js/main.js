@@ -26,6 +26,7 @@ const PULSE_ATTACK = 30;
 const BAND_ATTACK = 30;
 const BAND_RELEASE = 6;
 const MAX_TRACKED = 8;
+const NO_INSIGHTS = new Map();
 const THEMES = { kinetic: KineticDepth, grunge: GrungeTheme, paper: PaperBrushTheme };
 const DEFAULT_THEME = 'kinetic';
 const isTheme = (name) => typeof name === 'string' && Object.prototype.hasOwnProperty.call(THEMES, name);
@@ -91,6 +92,9 @@ async function boot() {
   /** 'visualizer' draws lyrics in 3D; 'lyrics' keeps only the scene (the app shows a native sheet). */
   let mode = 'visualizer';
   let forwardKeys = false;
+  /** Emoji can be switched off by the viewer (the host's E key). */
+  let showEmoji = true;
+  const insightStore = new Map();
   /** Lyrics mode drawn by the page (the host may draw its own instead). */
   let sheetEnabled = false;
   /** Live singer pacing (the host can switch it off). */
@@ -118,7 +122,8 @@ async function boot() {
     fonts,
     sparkles,
     stickers: new StickerFactory(),
-    insights: new Map(),
+    /** Emoji per track; reads as empty while the viewer has emoji switched off. */
+    get insights() { return showEmoji ? insightStore : NO_INSIGHTS; },
     tracks: new Map(),
     artwork: new Map(),
     palettes: new PaletteStore(MAX_TRACKED),
@@ -163,6 +168,7 @@ async function boot() {
       const options = parse(json);
       if (options && typeof options.forwardKeys === 'boolean') forwardKeys = options.forwardKeys;
       if (options && typeof options.sheet === 'boolean') sheetEnabled = options.sheet;
+      if (options && typeof options.emoji === 'boolean') showEmoji = options.emoji;
       if (options && typeof options.pacing === 'boolean') {
         livePacing = options.pacing;
         pacers.forEach((pacer) => { pacer.enabled = livePacing; });
@@ -193,7 +199,7 @@ async function boot() {
       const payload = parse(json);
       if (!payload?.trackID || !Array.isArray(payload.lines)) return;
       const lines = payload.lines.filter((l) => Number.isInteger(l.index) && Array.isArray(l.objects));
-      remember(engine.insights, payload.trackID, new Map(lines.map((l) => [l.index, l])));
+      remember(insightStore, payload.trackID, new Map(lines.map((l) => [l.index, l])));
     },
     setTrack(json) {
       const t = parse(json);

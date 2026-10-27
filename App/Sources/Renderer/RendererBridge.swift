@@ -12,6 +12,7 @@ final class RendererBridge: NSObject, ObservableObject {
     private static let modeKey = "stageMode"
     private static let themeKey = "stageTheme"
     private static let pacingKey = "livePacing"
+    private static let emojiKey = "showEmoji"
     private static let tickInterval: TimeInterval = 1.0 / 30
     private static let handlerName = "apmuly"
 
@@ -19,6 +20,8 @@ final class RendererBridge: NSObject, ObservableObject {
     @Published private(set) var theme: StageTheme
     /// Live singer pacing in the stage: words start on the singer's vocal onsets.
     @Published private(set) var livePacing: Bool
+    /// Emoji in the themes and the lyrics sheet (some people love them, some don't).
+    @Published private(set) var showEmoji: Bool
     /// Set when the renderer can't start; the UI falls back to the native lyrics sheet.
     @Published private(set) var failure: String?
 
@@ -42,6 +45,7 @@ final class RendererBridge: NSObject, ObservableObject {
         mode = defaults.string(forKey: Self.modeKey).flatMap(StageMode.init(rawValue:)) ?? .visualizer
         theme = defaults.string(forKey: Self.themeKey).flatMap(StageTheme.init(rawValue:)) ?? .kinetic
         livePacing = defaults.object(forKey: Self.pacingKey) as? Bool ?? true
+        showEmoji = defaults.object(forKey: Self.emojiKey) as? Bool ?? true
         super.init()
     }
 
@@ -98,9 +102,15 @@ final class RendererBridge: NSObject, ObservableObject {
         sendOptions()
     }
 
+    func toggleEmoji() {
+        showEmoji.toggle()
+        defaults.set(showEmoji, forKey: Self.emojiKey)
+        sendOptions()
+    }
+
     /// The page draws Lyrics mode itself (live singer pacing, the song's colours).
     private func sendOptions() {
-        call("setOptions", argument: livePacing ? #"{"sheet":true,"pacing":true}"# : #"{"sheet":true,"pacing":false}"#)
+        call("setOptions", argument: #"{"sheet":true,"pacing":\#(livePacing),"emoji":\#(showEmoji)}"#)
     }
 
     func select(_ mode: StageMode) {

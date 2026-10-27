@@ -23,7 +23,7 @@ public class StageSessionTests
             var calls = session.Receive("""{"type":"ready"}""");
             Assert.True(session.IsReady);
             Assert.Equal(["setOptions", "setTheme", "setMode"], calls.Select(c => c.Fn));
-            Assert.Equal("""{"forwardKeys":true,"sheet":true,"pacing":true}""", calls[0].Arg);
+            Assert.Equal("""{"forwardKeys":true,"sheet":true,"pacing":true,"emoji":true}""", calls[0].Arg);
             Assert.Equal(["kinetic", "visualizer"], calls.Skip(1).Select(c => c.Arg));
             session.PageLost();
             Assert.False(session.IsReady);
@@ -72,12 +72,28 @@ public class StageSessionTests
         {
             Assert.True(session.Settings.Pacing);
             var off = session.HandleKey("p").Single();
-            Assert.Equal(("setOptions", """{"forwardKeys":true,"sheet":true,"pacing":false}"""), (off.Fn, off.Arg));
+            Assert.Equal(("setOptions", """{"forwardKeys":true,"sheet":true,"pacing":false,"emoji":true}"""), (off.Fn, off.Arg));
             Assert.False(new SettingsStore(h.SettingsPath).Load().Pacing);
-            Assert.Equal("""{"forwardKeys":true,"sheet":true,"pacing":false}""", session.Receive("""{"type":"ready"}""")[0].Arg);
+            Assert.Equal("""{"forwardKeys":true,"sheet":true,"pacing":false,"emoji":true}""", session.Receive("""{"type":"ready"}""")[0].Arg);
             var on = session.HandleKey("P").Single();
-            Assert.Equal("""{"forwardKeys":true,"sheet":true,"pacing":true}""", on.Arg);
+            Assert.Equal("""{"forwardKeys":true,"sheet":true,"pacing":true,"emoji":true}""", on.Arg);
             Assert.True(new SettingsStore(h.SettingsPath).Load().Pacing);
+        }
+    }
+
+    [Fact]
+    public void ETogglesEmojiSendsOptionsAndPersists()
+    {
+        var (session, h) = Make();
+        using (h)
+        {
+            Assert.True(session.Settings.Emoji);
+            var off = session.HandleKey("e").Single();
+            Assert.Equal(("setOptions", """{"forwardKeys":true,"sheet":true,"pacing":true,"emoji":false}"""), (off.Fn, off.Arg));
+            Assert.False(new SettingsStore(h.SettingsPath).Load().Emoji);
+            Assert.Equal("""{"forwardKeys":true,"sheet":true,"pacing":true,"emoji":false}""", session.Receive("""{"type":"ready"}""")[0].Arg);
+            Assert.True(session.HandleKey("E").Single().Arg.EndsWith("\"emoji\":true}", StringComparison.Ordinal));
+            Assert.True(new SettingsStore(h.SettingsPath).Load().Emoji);
         }
     }
 
@@ -193,6 +209,8 @@ public class KeyCommandTests
     [InlineData("R", StageCommandKind.RetryLyrics)]
     [InlineData("p", StageCommandKind.TogglePacing)]
     [InlineData("P", StageCommandKind.TogglePacing)]
+    [InlineData("e", StageCommandKind.ToggleEmoji)]
+    [InlineData("E", StageCommandKind.ToggleEmoji)]
     public void MapsMacShortcuts(string key, StageCommandKind kind) => Assert.Equal(kind, KeyCommands.For(key)?.Kind);
 
     [Fact]

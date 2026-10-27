@@ -88,7 +88,8 @@ public sealed record StatusPayload(
 public sealed record OptionsPayload(
     [property: JsonPropertyName("forwardKeys")] bool ForwardKeys,
     [property: JsonPropertyName("sheet")] bool Sheet,
-    [property: JsonPropertyName("pacing")] bool Pacing);
+    [property: JsonPropertyName("pacing")] bool Pacing,
+    [property: JsonPropertyName("emoji")] bool Emoji);
 
 public sealed record DeckPayload(
     [property: JsonPropertyName("trackID")] string TrackId,

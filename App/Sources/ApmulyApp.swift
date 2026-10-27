@@ -45,6 +45,7 @@ struct ApmulyApp: App {
                     .keyboardShortcut("t", modifiers: .command)
                 Divider()
                 Button(renderer.livePacing ? "Turn Off Live Singer Pacing" : "Turn On Live Singer Pacing") { renderer.toggleLivePacing() }
+                Button(renderer.showEmoji ? "Hide Emoji" : "Show Emoji") { renderer.toggleEmoji() }
             }
         }
     }
